@@ -47,11 +47,12 @@ export function shouldAcceptNaturalEnd(payload = {}, deckState = {}, now = Date.
 
   const currentPlaybackSeq = normalizePlaybackSequence(deckState.playbackSeq ?? deckState.seq);
   const eventPlaybackSeq = normalizePlaybackSequence(payload.playbackSeq ?? payload.seq);
-  if (eventPlaybackSeq && currentPlaybackSeq && eventPlaybackSeq !== currentPlaybackSeq) {
+  const hasPlaybackSequence = Object.hasOwn(payload, "playbackSeq") || Object.hasOwn(payload, "seq");
+  if (hasPlaybackSequence && eventPlaybackSeq !== currentPlaybackSeq) {
     return { ok: false, reason: "playback sequence changed" };
   }
 
-  if (Number(payload.authorityEpoch ?? 0) && Number(payload.authorityEpoch) !== Number(deckState.authorityEpoch ?? 0)) {
+  if (Object.hasOwn(payload, "authorityEpoch") && Number(payload.authorityEpoch) !== Number(deckState.authorityEpoch ?? 0)) {
     return { ok: false, reason: "authority epoch changed" };
   }
 
