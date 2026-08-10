@@ -47,7 +47,8 @@ export class EffectsService {
   }
 
   static async playTransportClick(action = "click", { enabled = true, settingsOverride = null } = {}) {
-    if (!enabled || !getSettingSafe(SETTINGS.deckClickSfx, true)) return false;
+    if (!enabled) return false;
+    if (!settingsOverride && !getSettingSafe(SETTINGS.deckClickSfx, true)) return false;
 
     const clickAction = normalizeTransportSfxAction(action);
     const sfx = settingsOverride ? normalizeTransportSfxSettings(settingsOverride) : readTransportSfxSettings();
