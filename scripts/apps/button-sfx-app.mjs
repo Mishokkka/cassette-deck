@@ -66,6 +66,7 @@ export class CassetteButtonSfxApp extends HandlebarsApplicationMixin(Application
   async #save() {
     if (!game.user?.isGM) return ui.notifications.warn("Cassette Deck: эти настройки может менять только GM.");
     const form = this.element.querySelector("[data-cd-button-sfx-form]");
+    if (!form) return ui.notifications.warn("Cassette Deck: форма настроек не найдена.");
     const formData = new FormData(form);
     const actions = {};
 
@@ -93,6 +94,7 @@ export class CassetteButtonSfxApp extends HandlebarsApplicationMixin(Application
 
   async #test(action) {
     const form = this.element.querySelector("[data-cd-button-sfx-form]");
+    if (!form) return ui.notifications.warn("Cassette Deck: форма настроек не найдена.");
     const formData = new FormData(form);
     const actions = {};
     for (const entry of TRANSPORT_SFX_ACTIONS) actions[entry.id] = String(formData.get(`sfx.${entry.id}`) || "").trim();
@@ -107,7 +109,9 @@ export class CassetteButtonSfxApp extends HandlebarsApplicationMixin(Application
   #browse(row) {
     const input = row?.querySelector?.("[data-sfx-path]");
     if (!input) return;
-    new FilePicker({
+    const FilePickerClass = foundry.applications?.apps?.FilePicker ?? globalThis.FilePicker;
+    if (!FilePickerClass) return ui.notifications.warn("Cassette Deck: FilePicker недоступен.");
+    new FilePickerClass({
       type: "audio",
       current: input.value || "",
       callback: (path) => {
