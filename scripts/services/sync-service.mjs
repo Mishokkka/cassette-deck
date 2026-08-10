@@ -13,6 +13,7 @@ export class SyncService {
   static #lastRequestAt = null;
   static #lastPulseResult = null;
   static #scheduledEnd = null;
+  static #initialSyncTimer = null;
 
   static start() {
     this.stop();
@@ -25,6 +26,8 @@ export class SyncService {
   static stop() {
     if (this.#gmPulseTimer) window.clearInterval(this.#gmPulseTimer);
     if (this.#endTimer) window.clearTimeout(this.#endTimer);
+    if (this.#initialSyncTimer) window.clearTimeout(this.#initialSyncTimer);
+    this.#initialSyncTimer = null;
     this.#gmPulseTimer = null;
     this.#endTimer = null;
     this.#scheduledEnd = null;
@@ -91,8 +94,11 @@ export class SyncService {
   static #requestInitialSync() {
     let enabled = true;
     try { enabled = game.settings.get(MODULE_ID, SETTINGS.autoSyncOnReady) !== false; } catch (_error) {}
-    if (!enabled) return;
-    window.setTimeout(() => this.requestSync({ reason: "ready" }).catch((error) => logger.warn("Initial sync request failed.", error)), 1000);
+    if (!enabled || this.#initialSyncTimer) return;
+    this.#initialSyncTimer = window.setTimeout(() => {
+      this.#initialSyncTimer = null;
+      this.requestSync({ reason: "ready" }).catch((error) => logger.warn("Initial sync request failed.", error));
+    }, 1000);
   }
 
   static #startGmPulse() {
