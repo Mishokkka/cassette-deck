@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "cassettes": [
+    {
+      "id": "cassette-one",
+      "title": "Test cassette",
+      "discovered": true,
+      "tracks": [
+        { "id": "track-ok", "title": "Known duration", "path": "music/test.ogg", "duration": 12.5 },
+        { "id": "track-unknown", "title": "Unknown duration", "path": "music/unknown.mp3", "duration": null }
+      ]
+    },
+    {
+      "id": "cassette-empty",
+      "title": "Empty cassette",
+      "discovered": false,
+      "tracks": []
+    }
+  ]
+}

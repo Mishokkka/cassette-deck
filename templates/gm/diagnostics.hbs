@@ -1,0 +1,156 @@
+<div class="cd-diagnostics">
+  <header class="cd-diagnostics__header">
+    <div>
+      <h2>Диагностика кассетника</h2>
+      <p>Состояние транспорта, аудиодвижка, socket-канала, preload cache и библиотеки.</p>
+    </div>
+    <div class="cd-diagnostics__actions">
+      <button type="button" class="cd-text-button" data-action="refresh"><i class="fa-solid fa-rotate"></i> Обновить</button>
+      <button type="button" class="cd-text-button" data-action="export-diagnostics"><i class="fa-solid fa-file-export"></i> Экспорт JSON</button>
+    </div>
+  </header>
+
+  {{#if issues.length}}
+    <section class="cd-diag-alert cd-diag-alert--warn">
+      <h3>Проблемы</h3>
+      <ul>
+        {{#each issues}}
+          <li>{{this}}</li>
+        {{/each}}
+      </ul>
+    </section>
+  {{else}}
+    <section class="cd-diag-alert cd-diag-alert--ok">
+      <h3>Критических проблем не найдено</h3>
+      <p>Панель показывает текущее состояние. Это не гарантия, что аудиофайл существует на диске, но общий контур жив.</p>
+    </section>
+  {{/if}}
+
+  <section class="cd-diag-grid">
+    <article class="cd-diag-card">
+      <h3>Контроллер</h3>
+      <dl>
+        <dt>Активный GM</dt><dd>{{activeGmLabel}}</dd>
+        <dt>Версия модуля</dt><dd>{{moduleVersion}}</dd>
+        <dt>Foundry</dt><dd>{{foundryVersion}}</dd>
+      </dl>
+    </article>
+
+    <article class="cd-diag-card">
+      <h3>Socket</h3>
+      <dl>
+        <dt>socketlib</dt><dd class="{{socketReadyClass}}">{{socketReadyLabel}}</dd>
+        <dt>Authority GM</dt><dd>{{authorityLabel}}</dd>
+        <dt>Сессия клиента</dt><dd>{{sessionReadyLabel}}</dd>
+        <dt>Legacy raw socket</dt><dd>{{rawSocketLabel}}</dd>
+        <dt>Отклонено команд</dt><dd>{{summary.socket.rejectedCount}}</dd>
+        <dt>Активных GM-сессий</dt><dd>{{summary.socket.authoritySessionCount}}</dd>
+      </dl>
+    </article>
+
+    <article class="cd-diag-card">
+      <h3>Deck state</h3>
+      <dl>
+        <dt>status</dt><dd>{{deckStatus}}</dd>
+        <dt>seq</dt><dd>{{deckSeq}}</dd>
+        <dt>playback seq</dt><dd>{{deckPlaybackSeq}}</dd>
+        <dt>кассета</dt><dd>{{cassetteTitle}}</dd>
+        <dt>трек</dt><dd>{{trackTitle}}</dd>
+      </dl>
+    </article>
+
+    <article class="cd-diag-card">
+      <h3>Последняя команда</h3>
+      <dl>
+        <dt>action</dt><dd>{{lastCommandAction}}</dd>
+        <dt>seq</dt><dd>{{lastCommandSeq}}</dd>
+        <dt>playback seq</dt><dd>{{lastCommandPlaybackSeq}}</dd>
+        <dt>dispatch</dt><dd><code>{{lastCommandDispatch}}</code></dd>
+        <dt>path</dt><dd><code>{{trackPath}}</code></dd>
+      </dl>
+    </article>
+
+    <article class="cd-diag-card">
+      <h3>Audio engine</h3>
+      <dl>
+        <dt>engine</dt><dd>{{audioEngine}}</dd>
+        <dt>playing</dt><dd>{{audioPlaying}}</dd>
+        <dt>time</dt><dd>{{audioCurrentTime}}</dd>
+        <dt>duration</dt><dd>{{audioDuration}}</dd>
+        <dt>error</dt><dd>{{audioError}}</dd>
+      </dl>
+    </article>
+
+    <article class="cd-diag-card">
+      <h3>Preload</h3>
+      <dl>
+        <dt>strategy</dt><dd>{{preloadStrategy}}</dd>
+        <dt>cache</dt><dd>{{preloadCache}}</dd>
+        <dt>ready</dt><dd>{{preloadReady}}</dd>
+        <dt>timeouts</dt><dd>{{preloadTimeouts}}</dd>
+        <dt>errors</dt><dd>{{preloadErrors}}</dd>
+        <dt>concurrency</dt><dd>{{preloadConcurrency}}</dd>
+        <dt>warming</dt><dd>{{preloadWarming}}</dd>
+        <dt>warm age</dt><dd>{{preloadWarmAge}}</dd>
+        <dt>last warm</dt><dd>{{preloadLastWarmDuration}}</dd>
+      </dl>
+    </article>
+
+    <article class="cd-diag-card">
+      <h3>Sync</h3>
+      <dl>
+        <dt>active</dt><dd>{{summary.sync.active}}</dd>
+        <dt>interval</dt><dd>{{summary.sync.intervalSeconds}} сек.</dd>
+        <dt>last pulse</dt><dd>{{summary.sync.lastPulseAt}}</dd>
+      </dl>
+    </article>
+
+    <article class="cd-diag-card">
+      <h3>Библиотека</h3>
+      <dl>
+        <dt>кассеты</dt><dd>{{libraryCassetteCount}}</dd>
+        <dt>дорожки</dt><dd>{{libraryTrackCount}}</dd>
+        <dt>проблемы</dt><dd>{{libraryIssueCount}}</dd>
+      </dl>
+    </article>
+  </section>
+
+  {{#if libraryIssues.length}}
+    <section class="cd-diag-card cd-diag-card--wide">
+      <h3>Первые проблемы библиотеки</h3>
+      <div class="cd-diag-issues">
+        {{#each libraryIssues}}
+          <div class="cd-diag-issue">
+            <strong>{{type}}</strong>
+            <span>{{cassetteTitle}} {{trackTitle}}</span>
+            {{#if path}}<code>{{path}}</code>{{/if}}
+          </div>
+        {{/each}}
+      </div>
+    </section>
+  {{/if}}
+
+
+  <section class="cd-diag-card cd-diag-card--wide cd-qa-card">
+    <h3>Финальная проверка</h3>
+    <p class="cd-diag-muted">Автоматические проверки ловят очевидные проблемы. Пункты manual нужно пройти руками на двух-трех клиентах.</p>
+    <div class="cd-qa-list">
+      {{#each qaChecks}}
+        <div class="cd-qa-item cd-qa-item--{{status}}">
+          <span class="cd-qa-status">{{status}}</span>
+          <div>
+            <strong>{{label}}</strong>
+            <p>{{details}}</p>
+          </div>
+        </div>
+      {{/each}}
+    </div>
+  </section>
+
+  <section class="cd-diag-tools">
+    <button type="button" class="cd-text-button" data-action="reset-local-audio"><i class="fa-solid fa-volume-xmark"></i> Сбросить локальный audio engine</button>
+    <button type="button" class="cd-text-button" data-action="clear-preload"><i class="fa-solid fa-broom"></i> Очистить preload cache</button>
+    <button type="button" class="cd-text-button cd-text-button--danger" data-action="reset-deck"><i class="fa-solid fa-power-off"></i> Сбросить проигрыватель у всех</button>
+    <button type="button" class="cd-text-button cd-text-button--warning" data-action="repair-library"><i class="fa-solid fa-screwdriver-wrench"></i> Мягко восстановить библиотеку</button>
+  </section>
+</div>

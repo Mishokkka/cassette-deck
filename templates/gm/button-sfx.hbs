@@ -1,0 +1,59 @@
+<form class="cd-button-sfx" data-cd-button-sfx-form>
+  <header class="cd-button-sfx__head">
+    <div>
+      <h2>Звуки кнопок плеера</h2>
+      <p>Настройка хранится в мире и применяется у всех клиентов. Пустое поле использует синтетический щелчок, если включён fallback.</p>
+    </div>
+    <div class="cd-button-sfx__actions">
+      <button type="button" class="cd-text-button cd-text-button--danger" data-action="reset-sfx">
+        <i class="fa-solid fa-rotate-left"></i> Сбросить
+      </button>
+      <button type="button" class="cd-text-button cd-text-button--primary" data-action="save-sfx">
+        <i class="fa-solid fa-floppy-disk"></i> Сохранить
+      </button>
+    </div>
+  </header>
+
+  <section class="cd-button-sfx__global">
+    <label class="cd-check-field cd-check-field--inline">
+      <input type="checkbox" name="enabled" {{#if enabled}}checked{{/if}}>
+      <span>Включить звуки кнопок</span>
+    </label>
+
+    <label class="cd-check-field cd-check-field--inline">
+      <input type="checkbox" name="fallbackSynth" {{#if fallbackSynth}}checked{{/if}}>
+      <span>Синтетический щелчок, если файл не выбран</span>
+    </label>
+
+    <label class="cd-field cd-field--small">
+      <span>Громкость</span>
+      <input type="number" name="volume" value="{{volume}}" min="0" max="100" step="1">
+      <small>0–100%</small>
+    </label>
+  </section>
+
+  <section class="cd-button-sfx__list">
+    {{#each actions}}
+      <article class="cd-sfx-row" data-sfx-row data-sfx-action="{{id}}">
+        <div class="cd-sfx-row__label">
+          <strong id="cd-sfx-label-{{id}}">{{label}}</strong>
+          <small>{{id}}</small>
+        </div>
+        <div class="cd-input-row">
+          <input type="text" name="sfx.{{id}}" value="{{path}}" data-sfx-path autocomplete="off" aria-labelledby="cd-sfx-label-{{id}}" placeholder="modules/cassette-deck/assets/sfx/{{id}}.ogg">
+          <button type="button" class="cd-icon-button" data-action="browse-sfx" title="Выбрать аудио" aria-label="Выбрать аудио для {{label}}">
+            <i class="fa-solid fa-folder-open"></i>
+          </button>
+        </div>
+        <div class="cd-sfx-row__actions">
+          <button type="button" class="cd-mini-button" data-action="test-sfx" data-sfx-action="{{id}}" title="Проверить" aria-label="Проверить {{label}}">
+            <i class="fa-solid fa-play"></i>
+          </button>
+          <button type="button" class="cd-mini-button" data-action="clear-sfx" title="Очистить" aria-label="Очистить {{label}}">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+      </article>
+    {{/each}}
+  </section>
+</form>
