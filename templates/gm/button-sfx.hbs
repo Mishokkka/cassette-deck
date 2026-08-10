@@ -36,20 +36,20 @@
     {{#each actions}}
       <article class="cd-sfx-row" data-sfx-row data-sfx-action="{{id}}">
         <div class="cd-sfx-row__label">
-          <strong>{{label}}</strong>
+          <strong id="cd-sfx-label-{{id}}">{{label}}</strong>
           <small>{{id}}</small>
         </div>
         <div class="cd-input-row">
-          <input type="text" name="sfx.{{id}}" value="{{path}}" data-sfx-path autocomplete="off" placeholder="modules/cassette-deck/assets/sfx/{{id}}.ogg">
-          <button type="button" class="cd-icon-button" data-action="browse-sfx" title="Выбрать аудио">
+          <input type="text" name="sfx.{{id}}" value="{{path}}" data-sfx-path autocomplete="off" aria-labelledby="cd-sfx-label-{{id}}" placeholder="modules/cassette-deck/assets/sfx/{{id}}.ogg">
+          <button type="button" class="cd-icon-button" data-action="browse-sfx" title="Выбрать аудио" aria-label="Выбрать аудио для {{label}}">
             <i class="fa-solid fa-folder-open"></i>
           </button>
         </div>
         <div class="cd-sfx-row__actions">
-          <button type="button" class="cd-mini-button" data-action="test-sfx" data-sfx-action="{{id}}" title="Проверить">
+          <button type="button" class="cd-mini-button" data-action="test-sfx" data-sfx-action="{{id}}" title="Проверить" aria-label="Проверить {{label}}">
             <i class="fa-solid fa-play"></i>
           </button>
-          <button type="button" class="cd-mini-button" data-action="clear-sfx" title="Очистить">
+          <button type="button" class="cd-mini-button" data-action="clear-sfx" title="Очистить" aria-label="Очистить {{label}}">
             <i class="fa-solid fa-xmark"></i>
           </button>
         </div>
