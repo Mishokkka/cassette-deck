@@ -10,6 +10,7 @@ export class WidgetVolumeController {
   #moveHandler = null;
   #endHandler = null;
   #uiPercent = null;
+  #commitSeq = 0;
 
   constructor({ getElement, getDeckState, transportVolume, previewVolume, isSilentResult } = {}) {
     this.#getElement = getElement;
@@ -80,6 +81,7 @@ export class WidgetVolumeController {
   }
 
   async #commit(value, { silent = false, previousValue = null } = {}) {
+    const seq = ++this.#commitSeq;
     const rollbackValue = clampPercent(previousValue, this.getUiPercent(this.#getDeckState?.()));
     const clamped = clampPercent(value, rollbackValue);
     const gain = volumePercentToGain(clamped);
@@ -88,6 +90,7 @@ export class WidgetVolumeController {
     this.#previewVolume?.(gain);
 
     const result = await this.#transportVolume?.(gain);
+    if (seq !== this.#commitSeq) return result;
     if (result?.ok) return result;
 
     this.#uiPercent = rollbackValue;
