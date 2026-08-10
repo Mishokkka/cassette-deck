@@ -71,12 +71,14 @@ export async function loadPlayerLayout() {
   try {
     const response = await fetch(PLAYER_LAYOUT_PATH);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    cachedPlayerLayout = await response.json();
+    const parsed = await response.json();
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("layout payload is not an object");
+    cachedPlayerLayout = parsed;
+    return cachedPlayerLayout;
   } catch (error) {
     logger.warn(`Cassette Deck | player layout fetch failed, using fallback. ${error?.message ?? error}`);
-    cachedPlayerLayout = foundry.utils.deepClone(FALLBACK_LAYOUT);
+    return foundry.utils.deepClone(FALLBACK_LAYOUT);
   }
-  return cachedPlayerLayout;
 }
 
 
@@ -112,9 +114,12 @@ export function roundedArea(area) {
 
 export function areaStyle(area, canvas) {
   if (!area || !canvas?.width || !canvas?.height) return "";
-  const left = (area.x / canvas.width) * 100;
-  const top = (area.y / canvas.height) * 100;
-  const width = (area.w / canvas.width) * 100;
-  const height = (area.h / canvas.height) * 100;
+  const values = [area.x, area.y, area.w, area.h, canvas.width, canvas.height].map(Number);
+  if (!values.every(Number.isFinite) || values[4] <= 0 || values[5] <= 0) return "";
+  const [x, y, w, h, canvasWidth, canvasHeight] = values;
+  const left = (x / canvasWidth) * 100;
+  const top = (y / canvasHeight) * 100;
+  const width = (w / canvasWidth) * 100;
+  const height = (h / canvasHeight) * 100;
   return `left:${left.toFixed(3)}%;top:${top.toFixed(3)}%;width:${width.toFixed(3)}%;height:${height.toFixed(3)}%;`;
 }
