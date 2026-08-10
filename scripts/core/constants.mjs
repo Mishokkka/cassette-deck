@@ -43,6 +43,7 @@ export const SOCKETS = {
   gmSelectCassette: "gmSelectCassette",
   gmTransportRequest: "gmTransportRequest",
   gmSyncRequest: "gmSyncRequest",
+  gmWriteLibrary: "gmWriteLibrary",
   clientApplyTransport: "clientApplyTransport",
   clientApplySyncPulse: "clientApplySyncPulse",
   gmIssueSession: "gmIssueSession",

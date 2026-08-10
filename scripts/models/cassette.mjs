@@ -1,5 +1,14 @@
 const LEGACY_LABEL_FONT_IDS = new Set(["handwritten", "marker", "typewriter", "print", "digital"]);
 
+export const CASSETTE_ACCESS_MODES = Object.freeze([
+  Object.freeze({ id: "unlocked", label: "Все игроки" }),
+  Object.freeze({ id: "locked", label: "Заперта" }),
+  Object.freeze({ id: "users", label: "Конкретные игроки" }),
+  Object.freeze({ id: "roles", label: "По ролям" })
+]);
+
+const CASSETTE_ACCESS_MODE_IDS = new Set(CASSETTE_ACCESS_MODES.map((mode) => mode.id));
+
 export function normalizeCassetteLabel(source = {}) {
   const rawFont = String(source?.font ?? "").trim();
   const font = LEGACY_LABEL_FONT_IDS.has(rawFont) ? "" : rawFont;
@@ -53,6 +62,15 @@ export function normalizeCassette(source = {}) {
     cassette.access ?? {},
     { inplace: false }
   );
+  cassette.access.mode = CASSETTE_ACCESS_MODE_IDS.has(String(cassette.access.mode || ""))
+    ? String(cassette.access.mode)
+    : "locked";
+  cassette.access.users = Array.isArray(cassette.access.users)
+    ? [...new Set(cassette.access.users.map((id) => String(id)).filter(Boolean))]
+    : [];
+  cassette.access.roles = Array.isArray(cassette.access.roles)
+    ? [...new Set(cassette.access.roles.map((role) => String(role)).filter(Boolean))]
+    : [];
 
   cassette.tracks = Array.isArray(cassette.tracks) ? cassette.tracks.map(normalizeTrack) : [];
   cassette.effects = foundry.utils.mergeObject(

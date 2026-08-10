@@ -7,13 +7,13 @@ import { getDiagnosticsApp, openDiagnosticsApp } from "../apps/diagnostics-app.m
 import {
   duplicateCassette,
   getCassettes,
-  getCassetteById,
+  getVisibleCassetteById,
   importLibrary,
   previewLibraryImport,
   rollbackLibrary,
   moveCassette,
   normalizeLibrarySort,
-  readLibrary,
+  readVisibleLibrary,
   inspectLibrary
 } from "../services/library-service.mjs";
 import { AudioEngine } from "../services/audio-engine.mjs";
@@ -34,7 +34,7 @@ export function registerPublicApi() {
     getPermissionsApp,
     openDiagnostics: openDiagnosticsApp,
     getDiagnosticsApp,
-    getLibrary: readLibrary,
+    getLibrary: () => readVisibleLibrary(game.user),
     importLibrary,
     previewLibraryImport,
     rollbackLibrary,
@@ -42,8 +42,9 @@ export function registerPublicApi() {
     moveCassette,
     normalizeLibrarySort,
     inspectLibrary,
-    getCassettes,
-    getCassetteById,
+    getCassettes: () => getCassettes({ visibleTo: game.user }),
+    getCassetteById: (cassetteId) => getVisibleCassetteById(cassetteId, game.user),
+    getVisibleCassetteById: (cassetteId) => getVisibleCassetteById(cassetteId, game.user),
     pingGM: () => CassetteSocket.pingGM(),
     transport: (action, options = {}) => CassetteSocket.transport(action, options),
     requestSync: (options = {}) => SyncService.requestSync(options),

@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.1.4
+
+### Code review fixes without UX changes
+
+- Socketlib handlers больше не теряют transport-provided identity из-за `.bind(this)`: входящие запросы связываются с фактическим `socketdata.userId`, а сессия не может быть выдана или использована от имени другого пользователя. Это не требует WebCrypto/HTTPS и сохраняет работу в локальной HTTP-сети.
+- Library writes от нескольких GM проходят через единый authority-GM и сериализованную очередь; optimistic revision check теперь действительно защищает от параллельной записи между клиентами.
+- Импорт библиотеки сначала инициирует скачивание backup текущего состояния и только затем выполняет замену.
+- Права игроков сохраняются как sparse overrides относительно строки по умолчанию; изменение default теперь применяется к пользователям без индивидуального override, а интерфейс автоматически обновляет наследуемые checkbox без изменения внешнего UX.
+- Pointer drag/resize/calibration/volume используют pointer capture, `pointercancel` и симметричную очистку глобальных listeners, поэтому чужой `pointerup` больше не может оставить `pointermove` активным.
+- Неизвестный режим доступа кассеты fail-closed в `locked`; список режимов доступа централизован.
+- Lookup аудиоэффектов переведён на immutable null-prototype preset table, исключая inherited-key lookup.
+- Protocol-relative и UNC-подобные audio paths (`//host/...`, `\\host\...`) отклоняются до нормализации локального пути.
+- Same-track sync считается non-mutating только если текущий audio handle действительно играет, что исключает перекрывающиеся startup/play операции после паузы.
+- Публичный API больше не выдаёт игрокам полную скрытую библиотеку; import preview и полная inspection/diagnostics остаются GM-only.
+- Preload исправляет synchronous cached-metadata TDZ, всегда использует стабильную форму summary и при ограниченном cache сначала прогревает текущую и следующую дорожки.
+
+### Tests
+
+- Добавлены регрессии для caller-bound socket sessions без secure-context crypto, sparse permissions inheritance, authority write serialization, protocol-relative paths, preset prototype safety, synchronous metadata preload и current/next preload priority.
+- Автоматический набор: 44 теста.
+
 ## 1.1.3
 
 ### Performance without UX changes

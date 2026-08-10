@@ -4,7 +4,7 @@ export function normalizeVolume(volume, multiplier = 1) {
   return Math.min(1, Math.max(0, value));
 }
 
-export function commandMayMutatePlayback(command = {}, { activePath = null, hasActiveHandle = false } = {}) {
+export function commandMayMutatePlayback(command = {}, { activePath = null, hasActiveHandle = false, isPlaying = false } = {}) {
   const action = String(command.action || "");
   if (action === "volume" || action === "noop" || action === "closeLid") return false;
 
@@ -12,7 +12,7 @@ export function commandMayMutatePlayback(command = {}, { activePath = null, hasA
     // A same-track playing sync pulse is corrective, not a new transport intent.
     // Treating it as mutating can cancel a fresh play startup/fade and leave
     // native media muted until a later volume command touches the element.
-    if (command.status === "playing" && command.path && hasActiveHandle && activePath === command.path) return false;
+    if (command.status === "playing" && command.path && hasActiveHandle && isPlaying && activePath === command.path) return false;
   }
 
   return true;

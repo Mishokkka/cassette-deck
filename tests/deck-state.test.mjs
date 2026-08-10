@@ -121,7 +121,8 @@ test("audio command generation keeps volume and same-track sync non-mutating", (
   assert.equal(normalizeVolume(-1, 1), 0);
   assert.equal(normalizeVolume("bad", 1), 0.8);
   assert.equal(commandMayMutatePlayback({ action: "volume" }), false);
-  assert.equal(commandMayMutatePlayback({ action: "sync", status: "playing", path: "a.ogg" }, { activePath: "a.ogg", hasActiveHandle: true }), false);
+  assert.equal(commandMayMutatePlayback({ action: "sync", status: "playing", path: "a.ogg" }, { activePath: "a.ogg", hasActiveHandle: true, isPlaying: true }), false);
+  assert.equal(commandMayMutatePlayback({ action: "sync", status: "playing", path: "a.ogg" }, { activePath: "a.ogg", hasActiveHandle: true, isPlaying: false }), true);
   assert.equal(commandMayMutatePlayback({ action: "sync", status: "playing", path: "b.ogg" }, { activePath: "a.ogg", hasActiveHandle: true }), true);
 });
 

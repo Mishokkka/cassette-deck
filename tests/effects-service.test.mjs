@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { DEFAULT_TRANSPORT_SFX } from "../scripts/core/constants.mjs";
+import { EFFECT_PRESETS, getEffectPreset } from "../scripts/models/effect-preset.mjs";
 import { normalizeTransportSfxAction, normalizeTransportSfxSettings, resolveTransportSfxVolume, TRANSPORT_SFX_ACTIONS } from "../scripts/services/effects-service.mjs";
 
 test("transport SFX settings normalize all final button actions", () => {
@@ -36,4 +37,14 @@ test("shuttle button SFX receives a bounded gain boost", () => {
   assert.equal(resolveTransportSfxVolume("seekForward", 0.5), 0.675);
   assert.equal(resolveTransportSfxVolume("rewind", 0.8), 1);
   assert.equal(resolveTransportSfxVolume("seekBackward", 0), 0);
+});
+
+
+test("effect preset lookup is prototype-safe and presets are immutable", () => {
+  assert.equal(getEffectPreset("constructor").id, "clean");
+  assert.equal(getEffectPreset("toString").id, "clean");
+  assert.equal(getEffectPreset("damaged").id, "damaged");
+  assert.equal(Object.getPrototypeOf(EFFECT_PRESETS), null);
+  assert.equal(Object.isFrozen(EFFECT_PRESETS), true);
+  assert.equal(Object.isFrozen(EFFECT_PRESETS.damaged), true);
 });

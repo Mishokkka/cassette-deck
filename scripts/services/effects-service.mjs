@@ -1,7 +1,7 @@
 import { DEFAULT_TRANSPORT_SFX, MODULE_ID, SETTINGS } from "../core/constants.mjs";
 import { logger } from "../core/logger.mjs";
 import { clampNumber, resolveFoundryAudioPath, resolveMaybeNumber } from "../core/utils.mjs";
-import { EFFECT_PRESETS, getEffectPresetChoices } from "../models/effect-preset.mjs";
+import { EFFECT_PRESETS, getEffectPreset, getEffectPresetChoices } from "../models/effect-preset.mjs";
 
 export { getEffectPresetChoices };
 
@@ -27,7 +27,7 @@ let clickAudioContext = null;
 export class EffectsService {
   static getPlaybackOptions(effects = {}) {
     const presetId = String(effects?.preset || "clean");
-    const base = EFFECT_PRESETS[presetId] ?? EFFECT_PRESETS.clean;
+    const base = getEffectPreset(presetId);
     const intensity = clampNumber(effects?.intensity, 0, MAX_EFFECT_INTENSITY, 1);
 
     const effectsEnabled = getSettingSafe(SETTINGS.effectsEnabled, true);

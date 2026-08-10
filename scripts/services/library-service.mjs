@@ -3,9 +3,11 @@ import { getSetting, setSetting } from "../core/settings.mjs";
 import { createEmptyCassette, normalizeCassette } from "../models/cassette.mjs";
 import { isSafeAudioPath } from "../models/validators.mjs";
 import { codedError } from "../core/utils.mjs";
+import { AuthorityService } from "../core/authority.mjs";
 
 
 let librarySnapshotCache = null;
+let libraryWriteQueue = Promise.resolve();
 
 function cloneValue(value) {
   return foundry.utils.deepClone(value);
@@ -80,7 +82,14 @@ export function readLibrary() {
   return cloneValue(getLibrarySnapshot().library);
 }
 
-export function getCassetteSummaries({ visibleTo = null } = {}) {
+export function readVisibleLibrary(user = game.user) {
+  const library = readLibrary();
+  if (user?.isGM) return library;
+  library.cassettes = library.cassettes.filter((cassette) => isCassetteVisibleToUser(cassette, user));
+  return library;
+}
+
+export function getCassetteSummaries({ visibleTo = game.user } = {}) {
   const cassettes = getLibrarySnapshot().library.cassettes ?? [];
   const visible = (!visibleTo || visibleTo.isGM)
     ? cassettes
@@ -92,7 +101,7 @@ export function getCassetteSummaries({ visibleTo = null } = {}) {
   }));
 }
 
-export function getVisibleTrackSummaries({ visibleTo = null, limit = Infinity } = {}) {
+export function getVisibleTrackSummaries({ visibleTo = game.user, limit = Infinity } = {}) {
   const max = Number.isFinite(Number(limit)) ? Math.max(0, Math.floor(Number(limit))) : Infinity;
   if (max === 0) return [];
 
@@ -111,7 +120,7 @@ export function getVisibleTrackSummaries({ visibleTo = null, limit = Infinity } 
   return result;
 }
 
-export function getCassettes({ visibleTo = null } = {}) {
+export function getCassettes({ visibleTo = game.user } = {}) {
   const cassettes = getLibrarySnapshot().library.cassettes ?? [];
   const visible = (!visibleTo || visibleTo.isGM)
     ? cassettes
@@ -134,26 +143,47 @@ export function isCassetteVisibleToUser(cassette, user = game.user) {
   if (!cassette || !user) return false;
   if (user.isGM) return true;
   if (!cassette.discovered) return false;
-  const mode = cassette.access?.mode ?? "unlocked";
+  const mode = cassette.access?.mode ?? "locked";
+  if (mode === "unlocked") return true;
   if (mode === "locked") return false;
   if (mode === "users") return Array.isArray(cassette.access?.users) && cassette.access.users.includes(user.id);
   if (mode === "roles") return Array.isArray(cassette.access?.roles) && cassette.access.roles.includes(String(user.role));
-  return true;
+  return false;
 }
 
 export async function writeLibrary(library, { expectedRevision = null } = {}) {
   requireGM();
-  const currentRevision = getLibrarySnapshot().revision;
-  if (expectedRevision !== null && Number(expectedRevision) !== currentRevision) {
-    throw codedError("The cassette library changed in another GM window. Reload before saving.", "LIBRARY_CONFLICT", { expectedRevision, actualRevision: currentRevision });
-  }
-  const next = normalizeLibrary(library);
-  assertLibraryValid(next);
-  next.revision = currentRevision + 1;
-  next.updatedAt = Date.now();
-  await setSetting(SETTINGS.library, next);
-  invalidateLibraryCache();
-  return next;
+  if (AuthorityService.isLocalAuthority) return writeLibraryAsAuthority(library, { expectedRevision });
+
+  const authorityUserId = AuthorityService.authorityUserId;
+  if (!authorityUserId) throw codedError("No active Cassette Deck authority GM is available.", "NO_ACTIVE_GM");
+
+  // Keep the write path single-writer across multiple GM clients. The dynamic
+  // import avoids a static library-service <-> socket module cycle.
+  const { CassetteSocket } = await import("../core/socket.mjs");
+  return CassetteSocket.writeLibrary(library, { expectedRevision });
+}
+
+export async function writeLibraryAsAuthority(library, { expectedRevision = null } = {}) {
+  requireGM();
+  AuthorityService.assertLocalAuthority();
+
+  const run = libraryWriteQueue.then(async () => {
+    const currentRevision = getLibrarySnapshot().revision;
+    if (expectedRevision !== null && Number(expectedRevision) !== currentRevision) {
+      throw codedError("The cassette library changed in another GM window. Reload before saving.", "LIBRARY_CONFLICT", { expectedRevision, actualRevision: currentRevision });
+    }
+    const next = normalizeLibrary(library);
+    assertLibraryValid(next);
+    next.revision = currentRevision + 1;
+    next.updatedAt = Date.now();
+    await setSetting(SETTINGS.library, next);
+    invalidateLibraryCache();
+    return cloneValue(next);
+  });
+
+  libraryWriteQueue = run.catch(() => undefined);
+  return run;
 }
 
 async function mutateLibrary(mutator) {
@@ -242,6 +272,7 @@ function inspectNormalizedLibrary(normalized) {
 }
 
 export function inspectLibrary(libraryData = null) {
+  if (libraryData === null) requireGM();
   const normalized = libraryData === null ? getLibrarySnapshot().library : normalizeLibrary(libraryData);
   return inspectNormalizedLibrary(normalized);
 }
@@ -277,6 +308,7 @@ export async function repairLibrary({ clearUnsafePaths = true, dedupeIds = true,
 }
 
 export function previewLibraryImport(libraryData) {
+  requireGM();
   const source = libraryData?.library ?? libraryData;
   const incoming = normalizeLibrary(source);
   assertLibraryValid(incoming);

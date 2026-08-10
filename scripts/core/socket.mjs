@@ -6,6 +6,7 @@ import { getDeckState } from "./settings.mjs";
 import { estimateOffset, normalizePlaybackRate, validateCommandAgainstState } from "../models/deck-state.mjs";
 import { gmCommitSync, gmHandleTransportRequest, gmSelectCassette } from "../services/deck-service.mjs";
 import { AudioEngine } from "../services/audio-engine.mjs";
+import { writeLibraryAsAuthority } from "../services/library-service.mjs";
 
 const SESSION_TTL_MS = 5 * 60_000;
 const SESSION_WAIT_MS = 2500;
@@ -66,14 +67,38 @@ class CassetteSocketService {
       const channel = this.#registeredChannel ?? socketlibApi.registerModule(MODULE_ID);
       if (!channel?.register) throw new Error("socketlib did not return a valid module channel");
       if (!this.#registeredChannel) {
-        channel.register(SOCKETS.gmPing, this.#handleGmPing.bind(this));
-        channel.register(SOCKETS.gmIssueSession, this.#handleGmIssueSession.bind(this));
-        channel.register(SOCKETS.clientReceiveSession, this.#handleClientReceiveSession.bind(this));
-        channel.register(SOCKETS.gmSelectCassette, this.#handleGmSelectCassette.bind(this));
-        channel.register(SOCKETS.gmTransportRequest, this.#handleGmTransportRequest.bind(this));
-        channel.register(SOCKETS.gmSyncRequest, this.#handleGmSyncRequest.bind(this));
-        channel.register(SOCKETS.clientApplyTransport, this.#handleClientApplyTransport.bind(this));
-        channel.register(SOCKETS.clientApplySyncPulse, this.#handleClientApplySyncPulse.bind(this));
+        // Do not bind these callbacks. socketlib deliberately supplies the real
+        // sender as `this.socketdata.userId`; binding would discard that context.
+        // This identity comes from Foundry/socketlib transport and works on normal
+        // LAN HTTP sessions without WebCrypto or an HTTPS secure context.
+        const service = this;
+        channel.register(SOCKETS.gmPing, function(payload) {
+          return service.#handleGmPing(payload, this?.socketdata?.userId);
+        });
+        channel.register(SOCKETS.gmIssueSession, function(payload) {
+          return service.#handleGmIssueSession(payload, this?.socketdata?.userId);
+        });
+        channel.register(SOCKETS.clientReceiveSession, function(payload) {
+          return service.#handleClientReceiveSession(payload, this?.socketdata?.userId);
+        });
+        channel.register(SOCKETS.gmSelectCassette, function(payload) {
+          return service.#handleGmSelectCassette(payload, this?.socketdata?.userId);
+        });
+        channel.register(SOCKETS.gmTransportRequest, function(payload) {
+          return service.#handleGmTransportRequest(payload, this?.socketdata?.userId);
+        });
+        channel.register(SOCKETS.gmSyncRequest, function(payload) {
+          return service.#handleGmSyncRequest(payload, this?.socketdata?.userId);
+        });
+        channel.register(SOCKETS.gmWriteLibrary, function(payload) {
+          return service.#handleGmWriteLibrary(payload, this?.socketdata?.userId);
+        });
+        channel.register(SOCKETS.clientApplyTransport, function(command) {
+          return service.#handleClientApplyTransport(command, { callerUserId: this?.socketdata?.userId });
+        });
+        channel.register(SOCKETS.clientApplySyncPulse, function(payload) {
+          return service.#handleClientApplySyncPulse(payload, this?.socketdata?.userId);
+        });
         this.#registeredChannel = channel;
       }
       this.socket = channel;
@@ -138,6 +163,10 @@ class CassetteSocketService {
     } catch (error) {
       return formatErrorResult(error, "GM transport request failed", "SOCKET_ERROR");
     }
+  }
+
+  async writeLibrary(library, { expectedRevision = null } = {}) {
+    return this.#callAuthority(SOCKETS.gmWriteLibrary, { library, expectedRevision });
   }
 
   async requestSync({ reason = "manual" } = {}) {
@@ -277,6 +306,8 @@ class CassetteSocketService {
         if (result?.command) await this.broadcastTransportCommand(result.command);
         return result;
       }
+      case SOCKETS.gmWriteLibrary:
+        return writeLibraryAsAuthority(payload.library, { expectedRevision: payload.expectedRevision ?? null });
       default:
         throw codedError(`Unsupported local authority handler: ${handler}`, "BAD_REQUEST");
     }
@@ -323,9 +354,14 @@ class CassetteSocketService {
     return requestPromise;
   }
 
-  async #handleGmIssueSession({ requestedUserId, requestId } = {}) {
+  async #handleGmIssueSession({ requestedUserId, requestId } = {}, callerUserId = null) {
     AuthorityService.assertLocalAuthority();
-    const user = game.users.get(String(requestedUserId || ""));
+    const requestedId = String(requestedUserId || "");
+    const callerId = String(callerUserId || "");
+    if (!callerId || callerId !== requestedId) {
+      throw codedError("Socket session requester identity mismatch.", "SESSION_REQUESTER_MISMATCH");
+    }
+    const user = game.users.get(requestedId);
     if (!user?.active) throw codedError("Requested user is not active.", "UNKNOWN_USER");
     const token = foundry.utils.randomID(48);
     const expiresAt = Date.now() + SESSION_TTL_MS;
@@ -344,7 +380,8 @@ class CassetteSocketService {
     return { ok: true, delivered: true, expiresAt };
   }
 
-  #handleClientReceiveSession(payload = {}) {
+  #handleClientReceiveSession(payload = {}, callerUserId = null) {
+    if (String(callerUserId || "") !== String(AuthorityService.authorityUserId || "")) return { ok: false, reason: "session sender is not the active authority" };
     if (payload.userId !== game.user.id) return { ok: false, reason: "session target mismatch" };
     if (payload.authorityUserId !== AuthorityService.authorityUserId) return { ok: false, reason: "session authority mismatch" };
     const waiter = this.#sessionWaiters.get(payload.requestId);
@@ -356,8 +393,11 @@ class CassetteSocketService {
     return { ok: true };
   }
 
-  #authenticate(payload = {}) {
+  #authenticate(payload = {}, callerUserId = null) {
     AuthorityService.assertLocalAuthority();
+    const callerId = String(callerUserId || "");
+    if (!callerId) throw codedError("Socket caller identity is unavailable.", "SESSION_CALLER_MISSING");
+
     const token = String(payload.sessionToken || "");
     const session = this.#sessionsByToken.get(token);
     if (!session || session.expiresAt <= Date.now()) {
@@ -365,6 +405,9 @@ class CassetteSocketService {
       if (session?.userId && this.#sessionTokenByUser.get(session.userId) === token) this.#sessionTokenByUser.delete(session.userId);
       throw codedError("Socket session is missing or expired.", "SESSION_INVALID");
     }
+    if (session.userId !== callerId) throw codedError("Socket session does not belong to the calling user.", "SESSION_CALLER_MISMATCH");
+    if (!game.users.get(callerId)?.active) throw codedError("Socket caller is not active.", "UNKNOWN_USER");
+
     session.expiresAt = Date.now() + SESSION_TTL_MS;
     return session.userId;
   }
@@ -379,33 +422,41 @@ class CassetteSocketService {
     }
   }
 
-  #handleGmPing(payload = {}) {
-    const requesterId = this.#authenticate(payload);
+  #handleGmPing(payload = {}, callerUserId = null) {
+    const requesterId = this.#authenticate(payload, callerUserId);
     return { ok: true, requesterId, authorityUserId: game.user.id, timestamp: Date.now() };
   }
 
-  async #handleGmSelectCassette(payload = {}) {
-    const requesterId = this.#authenticate(payload);
+  async #handleGmSelectCassette(payload = {}, callerUserId = null) {
+    const requesterId = this.#authenticate(payload, callerUserId);
     const result = await gmSelectCassette({ requesterId, cassetteId: payload.cassetteId, trackId: payload.trackId ?? null });
     if (result?.command) await this.broadcastTransportCommand(result.command);
     return result;
   }
 
-  async #handleGmTransportRequest(payload = {}) {
-    const requesterId = this.#authenticate(payload);
+  async #handleGmTransportRequest(payload = {}, callerUserId = null) {
+    const requesterId = this.#authenticate(payload, callerUserId);
     const result = await gmHandleTransportRequest({ ...payload, sessionToken: undefined, requesterId });
     if (result?.command) await this.broadcastTransportCommand(result.command);
     return result;
   }
 
-  async #handleGmSyncRequest(payload = {}) {
-    const requesterId = this.#authenticate(payload);
+  async #handleGmSyncRequest(payload = {}, callerUserId = null) {
+    const requesterId = this.#authenticate(payload, callerUserId);
     const result = await gmCommitSync({ requesterId, reason: payload.reason ?? "manual" });
     if (result?.command) await this.broadcastTransportCommand(result.command);
     return result;
   }
 
-  async #handleClientApplySyncPulse(payload = {}) {
+  async #handleGmWriteLibrary(payload = {}, callerUserId = null) {
+    const requesterId = this.#authenticate(payload, callerUserId);
+    const requester = game.users.get(requesterId);
+    if (!requester?.isGM) throw codedError("Only a GM can edit the cassette library.", "GM_ONLY");
+    return writeLibraryAsAuthority(payload.library, { expectedRevision: payload.expectedRevision ?? null });
+  }
+
+  async #handleClientApplySyncPulse(payload = {}, callerUserId = null) {
+    if (String(callerUserId || "") !== String(AuthorityService.authorityUserId || "")) return this.#reject("sync pulse sender is not the active authority");
     const sessionToken = String(payload.sessionToken || "");
     const localSession = this.#localSession;
     if (!sessionToken || !localSession || sessionToken !== localSession.token) return this.#reject("sync pulse session mismatch");
@@ -467,7 +518,10 @@ class CassetteSocketService {
     return AudioEngine.applyTransportCommand(command);
   }
 
-  async #handleClientApplyTransport(command = {}, { expectedState = null } = {}) {
+  async #handleClientApplyTransport(command = {}, { expectedState = null, callerUserId = null } = {}) {
+    if (callerUserId !== null && String(callerUserId || "") !== String(AuthorityService.authorityUserId || "")) {
+      return this.#reject("transport sender is not the active authority");
+    }
     if (!command?.commandId) return this.#reject("transport command has no commandId");
     if (this.#seenCommandIds.has(command.commandId)) return { ok: true, ignored: true, reason: "duplicate command" };
     if (command.authorityUserId !== AuthorityService.authorityUserId) return this.#reject("transport authority mismatch");

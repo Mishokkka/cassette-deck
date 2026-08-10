@@ -44,7 +44,7 @@
               {{#each values}}
                 <td title="{{hint}}">
                   <label class="cd-permission-check">
-                    <input type="checkbox" data-permission-key="{{key}}" {{#if checked}}checked{{/if}}>
+                    <input type="checkbox" data-permission-key="{{key}}" data-inherited="{{#if inherited}}true{{else}}false{{/if}}" {{#if checked}}checked{{/if}}>
                     <span>{{label}}</span>
                   </label>
                 </td>

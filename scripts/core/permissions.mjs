@@ -97,7 +97,8 @@ export function normalizePermissions(source = {}) {
   const users = {};
   for (const [userId, value] of Object.entries(base.users ?? {})) {
     if (!userId) continue;
-    users[userId] = normalizePermissionSet(value, base.defaultPlayer);
+    const overrides = normalizePermissionOverrides(value, base.defaultPlayer);
+    if (Object.keys(overrides).length) users[userId] = overrides;
   }
   base.users = users;
 
@@ -109,6 +110,18 @@ export function normalizePermissionSet(source = {}, fallback = {}) {
   for (const definition of PERMISSION_DEFINITIONS) {
     const key = definition.key;
     result[key] = Boolean(source?.[key] ?? fallback?.[key] ?? false);
+  }
+  return result;
+}
+
+export function normalizePermissionOverrides(source = {}, fallback = {}) {
+  const result = {};
+  for (const definition of PERMISSION_DEFINITIONS) {
+    const key = definition.key;
+    if (!Object.hasOwn(source ?? {}, key)) continue;
+    const value = Boolean(source[key]);
+    const inherited = Boolean(fallback?.[key] ?? false);
+    if (value !== inherited) result[key] = value;
   }
   return result;
 }

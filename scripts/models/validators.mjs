@@ -11,7 +11,10 @@ export function canonicalizeLocalPath(path) {
     return null;
   }
 
-  value = value.replace(/\\/g, "/").replace(/^\/+/, "").replace(/\/{2,}/g, "/");
+  value = value.replace(/\\/g, "/");
+  // Reject protocol-relative and UNC-style paths before stripping leading slashes.
+  if (value.startsWith("//")) return null;
+  value = value.replace(/^\/+/, "").replace(/\/{2,}/g, "/");
   if (/^[a-z][a-z0-9+.-]*:/i.test(value)) return null;
 
   const clean = value.split("?")[0].split("#")[0];

@@ -2,7 +2,7 @@ import { MODULE_ID, MODULE_TITLE, SCHEMA_VERSIONS, TEMPLATES } from "../core/con
 import { logger } from "../core/logger.mjs";
 import { saveJsonFile } from "../core/file-utils.mjs";
 import { getEffectPresetChoices } from "../services/effects-service.mjs";
-import { createEmptyTrack, normalizeCassetteLabel } from "../models/cassette.mjs";
+import { CASSETTE_ACCESS_MODES, createEmptyTrack, normalizeCassetteLabel } from "../models/cassette.mjs";
 import { isSafeAudioPath } from "../models/validators.mjs";
 import { clampNumber } from "../core/utils.mjs";
 import { openPermissionsApp } from "./permissions-app.mjs";
@@ -302,9 +302,11 @@ export class CassetteLibraryApp extends HandlebarsApplicationMixin(ApplicationV2
       const confirmed = await this.#confirmImport(file.name, preview.diff);
       if (!confirmed) return;
 
+      const backupAt = new Date().toISOString();
+      const backupName = `cassette-deck-library-backup-${backupAt.replace(/[:.]/g, "-")}.json`;
+      saveJsonFile({ module: MODULE_ID, backupAt, library: preview.current }, backupName);
+
       const result = await importLibrary(data);
-      const backupName = `cassette-deck-library-backup-${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
-      saveJsonFile({ module: MODULE_ID, backupAt: new Date().toISOString(), library: result.backup }, backupName);
       this.#selectedCassetteId = result.library.cassettes[0]?.id ?? null;
       this.#dirty = false;
       this.#loadedRevision = result.library.revision;
@@ -445,12 +447,7 @@ export class CassetteLibraryApp extends HandlebarsApplicationMixin(ApplicationV2
   }
 
   #getAccessModes(currentMode) {
-    return [
-      { id: "unlocked", label: "Все игроки" },
-      { id: "locked", label: "Заперта" },
-      { id: "users", label: "Конкретные игроки" },
-      { id: "roles", label: "По ролям" }
-    ].map((mode) => ({
+    return CASSETTE_ACCESS_MODES.map((mode) => ({
       ...mode,
       selected: mode.id === currentMode
     }));

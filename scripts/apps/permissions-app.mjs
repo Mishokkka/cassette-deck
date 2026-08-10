@@ -4,6 +4,7 @@ import {
   buildControllerPreset,
   buildLockedPreset,
   buildViewerPreset,
+  normalizePermissionOverrides,
   normalizePermissionSet,
   PERMISSION_DEFINITIONS,
   readPermissions,
@@ -57,8 +58,9 @@ export class CassettePermissionsApp extends HandlebarsApplicationMixin(Applicati
         label: user.name,
         sublabel: user.active ? "онлайн" : "оффлайн",
         kind: "user",
-        permissions: permissions.users?.[user.id] ?? permissions.defaultPlayer,
+        permissions: normalizePermissionSet(permissions.users?.[user.id] ?? {}, permissions.defaultPlayer),
         defaultPermissions: permissions.defaultPlayer,
+        overrides: permissions.users?.[user.id] ?? {},
         active: user.active
       }))
     ];
@@ -78,7 +80,9 @@ export class CassettePermissionsApp extends HandlebarsApplicationMixin(Applicati
     await super._onRender(context, options);
 
     this.element.removeEventListener("click", this.#onActionClick);
+    this.element.removeEventListener("change", this.#onPermissionChange);
     this.element.addEventListener("click", this.#onActionClick);
+    this.element.addEventListener("change", this.#onPermissionChange);
   }
 
   #onActionClick = async (event) => {
@@ -110,6 +114,33 @@ export class CassettePermissionsApp extends HandlebarsApplicationMixin(Applicati
       ui.notifications.error(`Cassette Deck: ${error?.message ?? "ошибка прав"}`);
     }
   };
+
+  #onPermissionChange = (event) => {
+    const input = event.target?.closest?.("[data-permission-key]");
+    if (!input || !this.element?.contains?.(input)) return;
+    const row = input.closest("[data-permission-row]");
+    if (!row) return;
+
+    if (row.dataset.rowKind === "user") {
+      input.dataset.inherited = "false";
+      return;
+    }
+
+    if (row.dataset.rowKind === "default") this.#propagateDefaultToInheritedRows();
+  };
+
+  #propagateDefaultToInheritedRows() {
+    const defaultRow = this.element.querySelector("[data-permission-row][data-row-kind='default']");
+    if (!defaultRow) return;
+    for (const definition of PERMISSION_DEFINITIONS) {
+      const source = defaultRow.querySelector(`[data-permission-key='${definition.key}']`);
+      if (!source) continue;
+      for (const row of this.element.querySelectorAll("[data-permission-row][data-row-kind='user']")) {
+        const target = row.querySelector(`[data-permission-key='${definition.key}']`);
+        if (target?.dataset?.inherited === "true") target.checked = source.checked;
+      }
+    }
+  }
 
   async #savePermissions({ silent = false } = {}) {
     if (!game.user.isGM) return ui.notifications.warn("Cassette Deck: права может менять только GM.");
@@ -144,8 +175,11 @@ export class CassettePermissionsApp extends HandlebarsApplicationMixin(Applicati
     if (!row) return;
     for (const definition of PERMISSION_DEFINITIONS) {
       const input = row.querySelector(`[data-permission-key='${definition.key}']`);
-      if (input) input.checked = Boolean(preset[definition.key]);
+      if (!input) continue;
+      input.checked = Boolean(preset[definition.key]);
+      if (row.dataset.rowKind === "user") input.dataset.inherited = "false";
     }
+    if (row.dataset.rowKind === "default") this.#propagateDefaultToInheritedRows();
     await this.#savePermissions({ silent: true });
   }
 
@@ -157,7 +191,10 @@ export class CassettePermissionsApp extends HandlebarsApplicationMixin(Applicati
     for (const definition of PERMISSION_DEFINITIONS) {
       const source = defaultRow.querySelector(`[data-permission-key='${definition.key}']`);
       const target = row.querySelector(`[data-permission-key='${definition.key}']`);
-      if (source && target) target.checked = source.checked;
+      if (source && target) {
+        target.checked = source.checked;
+        target.dataset.inherited = "true";
+      }
     }
 
     await this.#savePermissions({ silent: true });
@@ -184,7 +221,10 @@ export class CassettePermissionsApp extends HandlebarsApplicationMixin(Applicati
       }
 
       if (kind === "default") result.defaultPlayer = normalizePermissionSet(values);
-      else if (kind === "user" && rowId) result.users[rowId] = normalizePermissionSet(values, result.defaultPlayer);
+      else if (kind === "user" && rowId) {
+        const overrides = normalizePermissionOverrides(values, result.defaultPlayer);
+        if (Object.keys(overrides).length) result.users[rowId] = overrides;
+      }
     }
 
     return result;
@@ -192,11 +232,12 @@ export class CassettePermissionsApp extends HandlebarsApplicationMixin(Applicati
 
   async _preClose(options) {
     this.element?.removeEventListener?.("click", this.#onActionClick);
+    this.element?.removeEventListener?.("change", this.#onPermissionChange);
     if (permissionsAppInstance === this) permissionsAppInstance = null;
     await super._preClose?.(options);
   }
 
-  #buildRow({ id, label, sublabel, kind, permissions, active = false }) {
+  #buildRow({ id, label, sublabel, kind, permissions, overrides = {}, active = false }) {
     const normalized = normalizePermissionSet(permissions);
     return {
       id,
@@ -207,7 +248,8 @@ export class CassettePermissionsApp extends HandlebarsApplicationMixin(Applicati
       active,
       values: PERMISSION_DEFINITIONS.map((definition) => ({
         ...definition,
-        checked: Boolean(normalized[definition.key])
+        checked: Boolean(normalized[definition.key]),
+        inherited: kind === "user" && !Object.hasOwn(overrides, definition.key)
       }))
     };
   }

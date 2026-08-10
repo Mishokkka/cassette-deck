@@ -28,7 +28,11 @@ export class WidgetCalibrationController {
       element.removeEventListener("pointerdown", this.#onStart);
     });
     if (this.#moveHandler) document.removeEventListener("pointermove", this.#moveHandler);
-    if (this.#endHandler) document.removeEventListener("pointerup", this.#endHandler);
+    if (this.#endHandler) {
+      document.removeEventListener("pointerup", this.#endHandler);
+      document.removeEventListener("pointercancel", this.#endHandler);
+    }
+    try { this.#state?.zone?.releasePointerCapture?.(this.#state.pointerId); } catch (_error) {}
     this.#moveHandler = null;
     this.#endHandler = null;
     this.#state = null;
@@ -68,10 +72,12 @@ export class WidgetCalibrationController {
     };
 
     zone.classList.add("is-editing");
+    try { zone.setPointerCapture?.(event.pointerId); } catch (_error) {}
     this.#moveHandler = this.#onMove;
     this.#endHandler = this.#onEnd;
     document.addEventListener("pointermove", this.#moveHandler, { passive: false });
-    document.addEventListener("pointerup", this.#endHandler, { once: true });
+    document.addEventListener("pointerup", this.#endHandler);
+    document.addEventListener("pointercancel", this.#endHandler);
   };
 
   #onMove = (event) => {
@@ -105,6 +111,11 @@ export class WidgetCalibrationController {
     if (!state || event.pointerId !== state.pointerId) return;
 
     if (this.#moveHandler) document.removeEventListener("pointermove", this.#moveHandler);
+    if (this.#endHandler) {
+      document.removeEventListener("pointerup", this.#endHandler);
+      document.removeEventListener("pointercancel", this.#endHandler);
+    }
+    try { state.zone?.releasePointerCapture?.(state.pointerId); } catch (_error) {}
     this.#moveHandler = null;
     this.#endHandler = null;
     state.zone.classList.remove("is-editing");

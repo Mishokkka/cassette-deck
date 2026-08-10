@@ -10,6 +10,10 @@ import { PreloadService } from "./preload-service.mjs";
 import { SyncService } from "./sync-service.mjs";
 import { inspectLibrary, readLibrary, repairLibrary as repairLibraryState } from "./library-service.mjs";
 
+function requireGM() {
+  if (!game.user?.isGM) throw codedError("Only a GM can access Cassette Deck diagnostics.", "GM_ONLY");
+}
+
 function getModuleVersion() {
   return game.modules.get(MODULE_ID)?.version ?? "unknown";
 }
@@ -36,6 +40,7 @@ function getSelectedLabels(deckState = getDeckState(), library = readLibrary()) 
 }
 
 export function getDiagnosticsSummary() {
+  requireGM();
   const deckState = getDeckState();
   const library = readLibrary();
   const runtime = AudioEngine.getRuntimeState();
@@ -237,6 +242,7 @@ export async function repairLibrary(options = {}) {
 }
 
 export function exportDiagnostics() {
+  requireGM();
   const filename = `cassette-deck-diagnostics-${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
   return saveJsonFile(getDiagnosticsSummary(), filename);
 }

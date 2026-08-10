@@ -123,15 +123,48 @@ test("library summary projections stay bounded and respect player visibility", a
   };
 
   const service = await import(`../scripts/services/library-service.mjs?summary=${Date.now()}`);
-  const cassettes = service.getCassetteSummaries({ visibleTo: game.user });
+  const cassettes = service.getCassetteSummaries();
   assert.deepEqual(cassettes, [
     { id: "visible-1", title: "Visible A", trackCount: 2 },
     { id: "visible-2", title: "Visible B", trackCount: 2 }
   ]);
 
-  const tracks = service.getVisibleTrackSummaries({ visibleTo: game.user, limit: 2 });
+  const tracks = service.getVisibleTrackSummaries({ limit: 2 });
   assert.deepEqual(tracks, [
     { id: "track-a", path: "audio/a.ogg", duration: 10 },
     { id: "track-b", path: "audio/b.ogg", duration: 20 }
   ]);
+  assert.deepEqual(service.getCassettes().map((cassette) => cassette.id), ["visible-1", "visible-2"]);
+  assert.deepEqual(service.readVisibleLibrary().cassettes.map((cassette) => cassette.id), ["visible-1", "visible-2"]);
+  assert.equal(service.isCassetteVisibleToUser({ discovered: true, access: { mode: "unexpected" } }, game.user), false);
+});
+
+
+test("authority library writes are serialized and preserve optimistic revision conflicts", async () => {
+  globalThis.foundry = {
+    utils: { deepClone: structuredClone, mergeObject, randomID: () => "generated-id" }
+  };
+  let library = { schemaVersion: 4, revision: 1, updatedAt: 1, cassettes: [] };
+  const gm = { id: "gm-a", isGM: true, active: true, name: "GM" };
+  globalThis.game = {
+    user: gm,
+    users: { contents: [gm], get: (id) => id === gm.id ? gm : null },
+    settings: {
+      get: () => library,
+      set: async (_module, _key, value) => {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        library = structuredClone(value);
+        return value;
+      }
+    }
+  };
+
+  const service = await import(`../scripts/services/library-service.mjs?queue=${Date.now()}`);
+  const base = service.readLibrary();
+  const first = service.writeLibraryAsAuthority({ ...base, cassettes: [] }, { expectedRevision: 1 });
+  const second = service.writeLibraryAsAuthority({ ...base, cassettes: [] }, { expectedRevision: 1 });
+  const firstResult = await first;
+  assert.equal(firstResult.revision, 2);
+  await assert.rejects(second, (error) => error?.code === "LIBRARY_CONFLICT");
+  assert.equal(library.revision, 2);
 });

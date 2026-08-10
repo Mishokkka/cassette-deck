@@ -14,6 +14,9 @@ test("audio path validation rejects traversal, protocols and unsupported formats
   assert.equal(isSafeAudioPath("uploads/%2e%2e/secrets.ogg"), false);
   assert.equal(isSafeAudioPath("C:/music/tape.ogg"), false);
   assert.equal(isSafeAudioPath("javascript:alert.ogg"), false);
+  assert.equal(isSafeAudioPath("//host.example/audio.mp3"), false);
+  assert.equal(isSafeAudioPath("\\\\host.example\\audio.mp3"), false);
+  assert.equal(isSafeAudioPath("%2F%2Fhost.example/audio.mp3"), false);
   assert.equal(isSafeAudioPath("https://example.com/tape.ogg"), false);
   assert.equal(isSafeAudioPath("https://example.com/tape.ogg", { allowRemote: true }), true);
   assert.equal(isSafeAudioPath("uploads/tape.exe"), false);

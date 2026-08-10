@@ -69,7 +69,11 @@ export class WidgetVolumeController {
       element.removeEventListener("keydown", this.#onKeyDown);
     });
     if (this.#moveHandler) document.removeEventListener("pointermove", this.#moveHandler);
-    if (this.#endHandler) document.removeEventListener("pointerup", this.#endHandler);
+    if (this.#endHandler) {
+      document.removeEventListener("pointerup", this.#endHandler);
+      document.removeEventListener("pointercancel", this.#endHandler);
+    }
+    try { this.#dragState?.track?.releasePointerCapture?.(this.#dragState.pointerId); } catch (_error) {}
     this.#moveHandler = null;
     this.#endHandler = null;
     this.#dragState = null;
@@ -121,13 +125,15 @@ export class WidgetVolumeController {
     const value = this.#valueFromPointer(event.clientY, track);
     this.#dragState = { pointerId: event.pointerId, track, value, startValue };
     track.classList.add("is-dragging");
+    try { track.setPointerCapture?.(event.pointerId); } catch (_error) {}
     this.updateThumb(value);
     this.#previewVolume?.(volumePercentToGain(value));
 
     this.#moveHandler = this.#onPointerMove;
     this.#endHandler = this.#onPointerUp;
     document.addEventListener("pointermove", this.#moveHandler, { passive: false });
-    document.addEventListener("pointerup", this.#endHandler, { once: true });
+    document.addEventListener("pointerup", this.#endHandler);
+    document.addEventListener("pointercancel", this.#endHandler);
   };
 
   #onPointerMove = (event) => {
@@ -146,6 +152,11 @@ export class WidgetVolumeController {
     if (!state || event.pointerId !== state.pointerId) return;
 
     if (this.#moveHandler) document.removeEventListener("pointermove", this.#moveHandler);
+    if (this.#endHandler) {
+      document.removeEventListener("pointerup", this.#endHandler);
+      document.removeEventListener("pointercancel", this.#endHandler);
+    }
+    try { state.track?.releasePointerCapture?.(state.pointerId); } catch (_error) {}
     this.#moveHandler = null;
     this.#endHandler = null;
     state.track?.classList?.remove("is-dragging");

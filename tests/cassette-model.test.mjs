@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizeCassette, normalizeCassetteLabel } from "../scripts/models/cassette.mjs";
+import { CASSETTE_ACCESS_MODES, normalizeCassette, normalizeCassetteLabel } from "../scripts/models/cassette.mjs";
 
 function withFoundryStub(fn) {
   const previousFoundry = globalThis.foundry;
@@ -48,3 +48,18 @@ test("cassette label supports Foundry font names and normalizes legacy built-in 
   assert.deepEqual(normalizeCassetteLabel({ font: "Alegreya Sans", text: "A\r\nB" }), { font: "Alegreya Sans" });
   assert.deepEqual(normalizeCassetteLabel({ font: "handwritten" }), { font: "" });
 });
+
+
+test("cassette access mode normalization fails closed for unknown values", () => withFoundryStub(() => {
+  const cassette = normalizeCassette({
+    id: "c-access",
+    title: "Access",
+    discovered: true,
+    access: { mode: "unexpected", users: ["u1", "u1"], roles: [1, "1"] },
+    tracks: []
+  });
+  assert.equal(cassette.access.mode, "locked");
+  assert.deepEqual(cassette.access.users, ["u1"]);
+  assert.deepEqual(cassette.access.roles, ["1"]);
+  assert.deepEqual(CASSETTE_ACCESS_MODES.map((mode) => mode.id), ["unlocked", "locked", "users", "roles"]);
+}));

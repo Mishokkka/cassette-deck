@@ -1,4 +1,4 @@
-export const EFFECT_PRESETS = Object.freeze({
+const EFFECT_PRESET_DEFINITIONS = {
   clean: {
     id: "clean",
     playbackRate: 1,
@@ -89,8 +89,19 @@ export const EFFECT_PRESETS = Object.freeze({
     compression: 1.0,
     playbackRateDrift: 0.038
   }
-});
+};
 
+export const EFFECT_PRESETS = Object.freeze(Object.assign(
+  Object.create(null),
+  Object.fromEntries(
+    Object.entries(EFFECT_PRESET_DEFINITIONS).map(([id, preset]) => [id, Object.freeze({ ...preset })])
+  )
+));
+
+export function getEffectPreset(presetId) {
+  const id = String(presetId || "clean");
+  return Object.hasOwn(EFFECT_PRESETS, id) ? EFFECT_PRESETS[id] : EFFECT_PRESETS.clean;
+}
 
 const PRESET_LABELS = Object.freeze({
   clean: "Чистый звук",

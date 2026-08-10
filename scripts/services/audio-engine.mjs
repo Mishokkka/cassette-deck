@@ -61,7 +61,8 @@ class CassetteAudioEngine {
 
     const playbackMutating = commandMayMutatePlayback(command, {
       activePath: this.#path,
-      hasActiveHandle: Boolean(this.#handle)
+      hasActiveHandle: Boolean(this.#handle),
+      isPlaying: Boolean(this.#handle?.playing)
     });
     const epoch = playbackMutating ? ++this.#commandEpoch : this.#commandEpoch;
     const { isCurrent } = makeCommandEpochContext(epoch, () => this.#commandEpoch);

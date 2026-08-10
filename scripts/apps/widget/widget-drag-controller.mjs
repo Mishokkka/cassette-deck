@@ -49,7 +49,11 @@ export class WidgetDragController {
     const handle = this.#getElement?.()?.querySelector?.("[data-cd-drag-handle]");
     handle?.removeEventListener?.("pointerdown", this.#onDragStart);
     if (this.#dragMoveHandler) document.removeEventListener("pointermove", this.#dragMoveHandler);
-    if (this.#dragEndHandler) document.removeEventListener("pointerup", this.#dragEndHandler);
+    if (this.#dragEndHandler) {
+      document.removeEventListener("pointerup", this.#dragEndHandler);
+      document.removeEventListener("pointercancel", this.#dragEndHandler);
+    }
+    try { this.#dragState?.captureTarget?.releasePointerCapture?.(this.#dragState.pointerId); } catch (_error) {}
     this.#dragMoveHandler = null;
     this.#dragEndHandler = null;
     if (this.#moveRaf !== null && typeof window.cancelAnimationFrame === "function") window.cancelAnimationFrame(this.#moveRaf);
@@ -86,17 +90,20 @@ export class WidgetDragController {
       left: rect.left,
       top: rect.top,
       width: rect.width,
-      height: rect.height
+      height: rect.height,
+      captureTarget: event.currentTarget
     };
     app.classList.add("is-dragging");
     app.style.right = "auto";
     app.style.bottom = "auto";
     app.style.left = `${Math.round(rect.left)}px`;
     app.style.top = `${Math.round(rect.top)}px`;
+    try { event.currentTarget?.setPointerCapture?.(event.pointerId); } catch (_error) {}
     this.#dragMoveHandler = this.#onDragMove;
     this.#dragEndHandler = this.#onDragEnd;
     document.addEventListener("pointermove", this.#dragMoveHandler, { passive: false });
-    document.addEventListener("pointerup", this.#dragEndHandler, { once: true });
+    document.addEventListener("pointerup", this.#dragEndHandler);
+    document.addEventListener("pointercancel", this.#dragEndHandler);
     event.preventDefault();
   };
 
@@ -114,6 +121,11 @@ export class WidgetDragController {
   #onDragEnd = async (event) => {
     if (!this.#dragState || event.pointerId !== this.#dragState.pointerId) return;
     if (this.#dragMoveHandler) document.removeEventListener("pointermove", this.#dragMoveHandler);
+    if (this.#dragEndHandler) {
+      document.removeEventListener("pointerup", this.#dragEndHandler);
+      document.removeEventListener("pointercancel", this.#dragEndHandler);
+    }
+    try { this.#dragState.captureTarget?.releasePointerCapture?.(this.#dragState.pointerId); } catch (_error) {}
     this.#dragMoveHandler = null;
     this.#dragEndHandler = null;
     const element = this.#getElement?.();

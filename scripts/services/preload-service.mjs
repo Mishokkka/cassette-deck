@@ -15,6 +15,30 @@ export class PreloadService {
   static #warmGeneration = 0;
   static #stats = { hits: 0, misses: 0, timeouts: 0, errors: 0, evicted: 0, cancelled: 0, obsolete: 0 };
 
+  static #makeWarmSummary(overrides = {}) {
+    return {
+      timestamp: Date.now(),
+      reason: null,
+      strategy: null,
+      requested: 0,
+      attempted: 0,
+      ready: 0,
+      loading: 0,
+      timeout: 0,
+      errors: 0,
+      obsolete: 0,
+      superseded: false,
+      invalidated: false,
+      cancelled: 0,
+      cacheSize: this.#cache.size,
+      concurrency: 0,
+      durationMs: 0,
+      generation: this.#warmGeneration,
+      previousGeneration: null,
+      ...overrides
+    };
+  }
+
   static async preloadTrack(track, options = {}) {
     if (!track?.path) return { ok: false, reason: "track has no audio path" };
     const path = String(track.path).trim();
@@ -120,8 +144,9 @@ export class PreloadService {
     const workerCount = Math.min(concurrency, unique.length);
     if (workerCount > 0) await Promise.all(Array.from({ length: workerCount }, () => worker()));
 
-    this.#lastWarmSummary = {
-      timestamp: Date.now(),
+    this.#lastWarmSummary = this.#makeWarmSummary({
+      reason: options.reason ?? null,
+      strategy: options.strategy ?? null,
       requested: tracks.length,
       attempted: unique.length,
       ready: results.filter((entry) => entry?.status === "ready").length,
@@ -129,10 +154,12 @@ export class PreloadService {
       timeout: results.filter((entry) => entry?.status === "timeout").length,
       errors: results.filter((entry) => entry?.status === "error").length,
       obsolete: results.filter((entry) => entry?.status === "obsolete").length + cancelled,
-      strategy: options.strategy ?? null,
+      cancelled,
       concurrency: workerCount,
-      durationMs: Date.now() - startedAt
-    };
+      durationMs: Date.now() - startedAt,
+      generation: warmGeneration ?? this.#warmGeneration,
+      cacheSize: this.#cache.size
+    });
 
     return results;
   }
@@ -140,7 +167,7 @@ export class PreloadService {
   static async warmFromCurrentContext({ reason = "manual", force = false } = {}) {
     const strategy = String(getSetting(SETTINGS.preloadStrategy) || "cassette");
     if (strategy === "none" && !force) {
-      this.#lastWarmSummary = { timestamp: Date.now(), reason, strategy, attempted: 0, ready: 0, errors: 0 };
+      this.#lastWarmSummary = this.#makeWarmSummary({ reason, strategy });
       return this.#lastWarmSummary;
     }
 
@@ -164,20 +191,22 @@ export class PreloadService {
           shouldContinue: () => generation === this.#warmGeneration
         });
 
-        const summary = {
-          timestamp: Date.now(),
+        const summary = this.#makeWarmSummary({
           reason,
           strategy,
+          requested: tracks.length,
           attempted: results.length,
           ready: results.filter((entry) => entry?.status === "ready").length,
+          loading: results.filter((entry) => entry?.status === "loading").length,
           timeout: results.filter((entry) => entry?.status === "timeout").length,
           errors: results.filter((entry) => entry?.status === "error").length,
+          obsolete: results.filter((entry) => entry?.status === "obsolete").length,
+          superseded: generation !== this.#warmGeneration,
           cacheSize: this.#cache.size,
           concurrency: Math.min(concurrency, results.length),
           durationMs: Date.now() - startedAt,
-          generation,
-          obsolete: generation !== this.#warmGeneration
-        };
+          generation
+        });
 
         if (generation === this.#warmGeneration) this.#lastWarmSummary = summary;
         return summary;
@@ -269,13 +298,12 @@ export class PreloadService {
 
     if (strategy === "cassette") {
       if (!cassette) return [];
-      const tracks = Array.isArray(cassette.tracks) ? [...cassette.tracks] : [];
-      if (includeNext) {
-        for (const track of getCurrentAndNextTracks(cassette, deckState.trackId)) {
-          if (track && !tracks.some((item) => item.id === track.id)) tracks.unshift(track);
-        }
-      }
-      return tracks;
+      const allTracks = Array.isArray(cassette.tracks) ? [...cassette.tracks] : [];
+      const priority = includeNext
+        ? getCurrentAndNextTracks(cassette, deckState.trackId)
+        : [getCurrentTrack(cassette, deckState.trackId)].filter(Boolean);
+      const priorityIds = new Set(priority.map((track) => track.id));
+      return [...priority, ...allTracks.filter((track) => !priorityIds.has(track.id))];
     }
 
     if (strategy === "visible") {
@@ -322,14 +350,13 @@ export class PreloadService {
     const previousGeneration = this.#warmGeneration;
     this.#warmGeneration += 1;
     const cancelled = this.#cancelLoadingWarmEntries(previousGeneration);
-    this.#lastWarmSummary = {
-      timestamp: Date.now(),
+    this.#lastWarmSummary = this.#makeWarmSummary({
       reason,
       invalidated: true,
       generation: this.#warmGeneration,
       previousGeneration,
       cancelled
-    };
+    });
   }
 
   static #cancelLoadingWarmEntries(generation = null) {
@@ -377,6 +404,7 @@ export class PreloadService {
 function loadAudioMetadata(audio, result, timeoutMs) {
   return new Promise((resolve) => {
     let settled = false;
+    let timeout = null;
 
     const finish = (status = "ready", error = null) => {
       if (settled) return;
@@ -385,7 +413,7 @@ function loadAudioMetadata(audio, result, timeoutMs) {
       audio.removeEventListener("durationchange", onReady);
       audio.removeEventListener("canplay", onReady);
       audio.removeEventListener("error", onError);
-      window.clearTimeout(timeout);
+      if (timeout !== null) window.clearTimeout(timeout);
 
       const duration = normalizeDuration(audio.duration);
       if (duration !== null) result.duration = duration;
@@ -425,7 +453,7 @@ function loadAudioMetadata(audio, result, timeoutMs) {
     audio.addEventListener("canplay", onReady);
     audio.addEventListener("error", onError);
 
-    const timeout = window.setTimeout(() => finish("timeout"), Math.max(1000, Number(timeoutMs) || DEFAULT_METADATA_TIMEOUT_MS));
+    timeout = window.setTimeout(() => finish("timeout"), Math.max(1000, Number(timeoutMs) || DEFAULT_METADATA_TIMEOUT_MS));
 
     // Metadata may already be available from the browser cache.
     onReady();

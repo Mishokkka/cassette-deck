@@ -51,7 +51,11 @@ export class WidgetResizeController {
     const handle = this.#getElement?.()?.querySelector?.('[data-cd-resize-handle]');
     handle?.removeEventListener?.('pointerdown', this.#onResizeStart);
     if (this.#moveHandler) document.removeEventListener('pointermove', this.#moveHandler);
-    if (this.#endHandler) document.removeEventListener('pointerup', this.#endHandler);
+    if (this.#endHandler) {
+      document.removeEventListener('pointerup', this.#endHandler);
+      document.removeEventListener('pointercancel', this.#endHandler);
+    }
+    try { this.#resizeState?.captureTarget?.releasePointerCapture?.(this.#resizeState.pointerId); } catch (_error) {}
     this.#moveHandler = null;
     this.#endHandler = null;
     if (this.#moveRaf !== null && typeof window.cancelAnimationFrame === "function") window.cancelAnimationFrame(this.#moveRaf);
@@ -82,13 +86,16 @@ export class WidgetResizeController {
       startWidth: rect.width,
       startLeft: rect.left,
       startTop: rect.top,
-      startHeight: rect.height
+      startHeight: rect.height,
+      captureTarget: event.currentTarget
     };
     app.classList.add('is-resizing');
+    try { event.currentTarget?.setPointerCapture?.(event.pointerId); } catch (_error) {}
     this.#moveHandler = this.#onResizeMove;
     this.#endHandler = this.#onResizeEnd;
     document.addEventListener('pointermove', this.#moveHandler, { passive: false });
-    document.addEventListener('pointerup', this.#endHandler, { once: true });
+    document.addEventListener('pointerup', this.#endHandler);
+    document.addEventListener('pointercancel', this.#endHandler);
     event.preventDefault();
     event.stopPropagation();
   };
@@ -108,6 +115,11 @@ export class WidgetResizeController {
     const state = this.#resizeState;
     if (!state || event.pointerId !== state.pointerId) return;
     if (this.#moveHandler) document.removeEventListener('pointermove', this.#moveHandler);
+    if (this.#endHandler) {
+      document.removeEventListener('pointerup', this.#endHandler);
+      document.removeEventListener('pointercancel', this.#endHandler);
+    }
+    try { state.captureTarget?.releasePointerCapture?.(state.pointerId); } catch (_error) {}
     this.#moveHandler = null;
     this.#endHandler = null;
     const element = this.#getElement?.();
