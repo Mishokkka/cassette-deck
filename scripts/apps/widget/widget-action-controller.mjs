@@ -80,13 +80,13 @@ export class WidgetActionController {
   async #dispatch(action, target, event = null) {
     const callbacks = this.#callbacks;
 
-    const simple = SIMPLE_TRANSPORTS[action];
+    const simple = Object.hasOwn(SIMPLE_TRANSPORTS, action) ? SIMPLE_TRANSPORTS[action] : null;
     if (simple) {
       callbacks.pulseMomentary?.(simple.id, simple.duration);
       return callbacks.transport?.(simple.action);
     }
 
-    const momentary = MOMENTARY_TRANSPORTS[action];
+    const momentary = Object.hasOwn(MOMENTARY_TRANSPORTS, action) ? MOMENTARY_TRANSPORTS[action] : null;
     if (momentary) {
       if (momentary.action === "seekBackward" || momentary.action === "seekForward") {
         return this.#dispatchSeekClick(momentary, event);
