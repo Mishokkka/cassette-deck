@@ -94,6 +94,8 @@ test("playback sequence validates natural end only near the authoritative end", 
   assert.equal(normalizePlaybackSequence("7"), 7);
   assert.equal(shouldAcceptNaturalEnd({ playbackSeq: 7, authorityEpoch: 3, cassetteId: "c1", trackId: "t1", path: "worlds/foo/music.ogg", endedAt: now }, state, now).ok, true);
   assert.equal(shouldAcceptNaturalEnd({ playbackSeq: 6, cassetteId: "c1", trackId: "t1", endedAt: now }, state, now).ok, false);
+  assert.equal(shouldAcceptNaturalEnd({ playbackSeq: 0, cassetteId: "c1", trackId: "t1", endedAt: now }, state, now).ok, false);
+  assert.equal(shouldAcceptNaturalEnd({ playbackSeq: 7, authorityEpoch: 0, cassetteId: "c1", trackId: "t1", endedAt: now }, state, now).ok, false);
   assert.equal(shouldAcceptNaturalEnd({ playbackSeq: 7, cassetteId: "c1", trackId: "t1", path: "worlds/foo/other.ogg", endedAt: now }, state, now).ok, false);
 
   const premature = { ...state, startedAt: 95_000 };
