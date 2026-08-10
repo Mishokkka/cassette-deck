@@ -49,8 +49,10 @@ export function effectiveDeckStateFromRuntime({ runtime = null, baseState = null
     ...base,
     seq: Math.max(baseSeq, commandSeq),
     status,
-    cassetteId: command.cassetteId ?? null,
-    trackId: shuttleActive ? (command.shuttleSourceTrackId ?? command.trackId ?? null) : (command.trackId ?? null),
+    cassetteId: command.cassetteId ?? base.cassetteId ?? null,
+    trackId: shuttleActive
+      ? (command.shuttleSourceTrackId ?? command.trackId ?? base.trackId ?? null)
+      : (command.trackId ?? base.trackId ?? null),
     offset,
     volume: command.volume ?? base.volume ?? 0.8,
     lidOpen: command.lidOpen ?? base.lidOpen ?? false,
@@ -70,7 +72,7 @@ export function formatTime(seconds) {
   const value = Number(seconds);
   if (!Number.isFinite(value) || value < 0) return "--:--";
   const total = Math.floor(value);
-  const mins = Math.floor(total / 60);
+  const mins = Math.min(99, Math.floor(total / 60));
   const secs = total % 60;
   return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
 }
