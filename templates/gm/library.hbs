@@ -1,0 +1,239 @@
+<div class="cd-library" data-cd-library>
+  <input type="file" class="cd-hidden-input" accept="application/json,.json" data-cd-import-input>
+  {{#unless isGM}}
+    <p class="cd-empty-note">Эту панель может открывать только GM.</p>
+  {{else}}
+    <aside class="cd-library__sidebar">
+      <header class="cd-library__sidebar-head">
+        <div>
+          <h2>Кассеты</h2>
+          <p>{{cassettes.length}} в библиотеке</p>
+        </div>
+        <div class="cd-library__sidebar-actions">
+          <button type="button" class="cd-icon-button" data-action="import-library" title="Импорт JSON">
+            <i class="fa-solid fa-file-import"></i>
+          </button>
+          <button type="button" class="cd-icon-button" data-action="export-library" title="Экспорт JSON">
+            <i class="fa-solid fa-file-export"></i>
+          </button>
+          <button type="button" class="cd-icon-button" data-action="normalize-sort" title="Нормализовать порядок">
+            <i class="fa-solid fa-arrow-down-short-wide"></i>
+          </button>
+          <button type="button" class="cd-icon-button" data-action="open-permissions" title="Права управления">
+            <i class="fa-solid fa-user-lock"></i>
+          </button>
+          <button type="button" class="cd-icon-button" data-action="create-cassette" title="Создать кассету">
+            <i class="fa-solid fa-plus"></i>
+          </button>
+        </div>
+      </header>
+
+      {{#if hasCassettes}}
+        <div class="cd-library-list">
+          {{#each cassettes}}
+            <button type="button" class="cd-library-list__item {{#if selected}}is-selected{{/if}}" data-action="select-cassette" data-cassette-id="{{id}}">
+              <span class="cd-library-list__title">{{title}}</span>
+              <span class="cd-library-list__meta">
+                {{#if discovered}}найдена{{else}}скрыта{{/if}} · {{trackCount}} дор.
+              </span>
+            </button>
+          {{/each}}
+        </div>
+      {{else}}
+        <p class="cd-empty-note">Пока нет кассет. Создай первую.</p>
+      {{/if}}
+    </aside>
+
+    <main class="cd-library__editor">
+      {{#if selected}}
+        <form data-cd-library-form>
+          <input type="hidden" name="id" value="{{selected.id}}">
+
+          <header class="cd-editor-head">
+            <div>
+              <h2>{{selected.title}}</h2>
+              <p>ID: <code>{{selected.id}}</code></p>
+            </div>
+            <div class="cd-editor-head__actions">
+              <button type="button" class="cd-icon-button" data-action="move-cassette-up" title="Поднять кассету">
+                <i class="fa-solid fa-arrow-up"></i>
+              </button>
+              <button type="button" class="cd-icon-button" data-action="move-cassette-down" title="Опустить кассету">
+                <i class="fa-solid fa-arrow-down"></i>
+              </button>
+              <button type="button" class="cd-text-button" data-action="duplicate-cassette">
+                <i class="fa-solid fa-copy"></i> Дублировать
+              </button>
+              <button type="button" class="cd-text-button cd-text-button--danger" data-action="delete-cassette">
+                <i class="fa-solid fa-trash"></i> Удалить
+              </button>
+              <button type="button" class="cd-text-button cd-text-button--primary" data-action="save-cassette">
+                <i class="fa-solid fa-floppy-disk"></i> Сохранить
+              </button>
+            </div>
+          </header>
+
+          <section class="cd-form-grid">
+            <label class="cd-field">
+              <span>Название</span>
+              <input type="text" name="title" value="{{selected.title}}" autocomplete="off">
+            </label>
+
+            <label class="cd-field cd-field--small">
+              <span>Сортировка</span>
+              <input type="number" name="sort" value="{{selected.sort}}" step="1">
+            </label>
+
+            <label class="cd-field">
+              <span>Шрифт названия на кассете</span>
+              <select name="labelFont">
+                {{#each labelFontChoices}}
+                  <option value="{{id}}" {{#if selected}}selected{{/if}}>{{label}}</option>
+                {{/each}}
+              </select>
+              <small>Используется для названия кассеты на бумажной наклейке. Длинное название переносится автоматически.</small>
+            </label>
+
+            <label class="cd-field cd-field--small cd-check-field">
+              <input type="checkbox" name="discovered" {{#if selected.discovered}}checked{{/if}}>
+              <span>Найдена игроками</span>
+            </label>
+
+            <label class="cd-field">
+              <span>Доступ</span>
+              <select name="accessMode">
+                {{#each accessModes}}
+                  <option value="{{id}}" {{#if selected}}selected{{/if}} {{#if disabled}}disabled{{/if}}>{{label}}</option>
+                {{/each}}
+              </select>
+            </label>
+
+            <label class="cd-field">
+              <span>Эффект</span>
+              <select name="effectPreset">
+                {{#each presetChoices}}
+                  <option value="{{id}}" {{#if selected}}selected{{/if}} {{#if disabled}}disabled{{/if}}>{{label}}</option>
+                {{/each}}
+              </select>
+            </label>
+
+            <label class="cd-field cd-field--small">
+              <span>Сила эффекта</span>
+              <input type="number" name="effectIntensity" value="{{selected.effects.intensity}}" min="0" max="5" step="0.05">
+              <small>0 чисто · 1 умеренно · 3 сильно · 5 почти нечитаемо</small>
+            </label>
+
+            <section class="cd-field cd-field--full cd-access-users">
+              <span>Конкретные игроки</span>
+              <p>Список используется, когда доступ кассеты выставлен как «Конкретные игроки».</p>
+              {{#if accessUsers.length}}
+                <div class="cd-access-users__grid">
+                  {{#each accessUsers}}
+                    <label class="cd-access-user {{#if active}}is-active{{/if}}">
+                      <input type="checkbox" data-access-user value="{{id}}" {{#if checked}}checked{{/if}}>
+                      <span>{{name}}</span>
+                    </label>
+                  {{/each}}
+                </div>
+              {{else}}
+                <p class="cd-empty-note">В мире пока нет игроков без GM-прав.</p>
+              {{/if}}
+            </section>
+
+
+
+            <section class="cd-field cd-field--full cd-access-users">
+              <span>Роли</span>
+              <p>Список используется, когда доступ кассеты выставлен как «По ролям».</p>
+              {{#if accessRoles.length}}
+                <div class="cd-access-users__grid">
+                  {{#each accessRoles}}
+                    <label class="cd-access-user">
+                      <input type="checkbox" data-access-role value="{{id}}" {{#if checked}}checked{{/if}}>
+                      <span>{{name}}</span>
+                    </label>
+                  {{/each}}
+                </div>
+              {{else}}
+                <p class="cd-empty-note">Роли игроков недоступны.</p>
+              {{/if}}
+            </section>
+
+            <label class="cd-field cd-field--full">
+              <span>Описание</span>
+              <textarea name="description" rows="4">{{selected.description}}</textarea>
+            </label>
+          </section>
+
+          <section class="cd-track-editor">
+            <header class="cd-section-head">
+              <div>
+                <h3>Дорожки</h3>
+                <p>Поддерживаются: ogg, mp3, wav, flac, webm. Remote URL пока намеренно запрещены.</p>
+              </div>
+              <button type="button" class="cd-text-button" data-action="add-track">
+                <i class="fa-solid fa-plus"></i> Добавить дорожку
+              </button>
+            </header>
+
+            {{#if selected.tracks.length}}
+              <div class="cd-track-list">
+                {{#each selected.tracks}}
+                  <article class="cd-track-row {{#if pathIsInvalid}}is-invalid{{/if}}" data-track-row data-track-id="{{id}}">
+                    <div class="cd-track-row__top">
+                      <label class="cd-field">
+                        <span>Название дорожки</span>
+                        <input type="text" data-track-field="title" value="{{title}}" autocomplete="off">
+                      </label>
+                      <div class="cd-track-row__actions">
+                        <button type="button" class="cd-icon-button" data-action="move-track-up" title="Поднять дорожку">
+                          <i class="fa-solid fa-arrow-up"></i>
+                        </button>
+                        <button type="button" class="cd-icon-button" data-action="move-track-down" title="Опустить дорожку">
+                          <i class="fa-solid fa-arrow-down"></i>
+                        </button>
+                        <button type="button" class="cd-icon-button cd-icon-button--danger" data-action="remove-track" title="Удалить дорожку">
+                          <i class="fa-solid fa-xmark"></i>
+                        </button>
+                      </div>
+                    </div>
+
+                    <label class="cd-field">
+                      <span>Файл</span>
+                      <div class="cd-input-row">
+                        <input type="text" data-track-field="path" value="{{path}}" autocomplete="off" placeholder="worlds/my-world/audio/cassette.ogg">
+                        <button type="button" class="cd-icon-button" data-action="browse-audio" title="Выбрать аудио">
+                          <i class="fa-solid fa-folder-open"></i>
+                        </button>
+                      </div>
+                    </label>
+
+                    {{#if pathIsInvalid}}
+                      <p class="cd-warning">Путь выглядит небезопасно или имеет неподдерживаемое расширение.</p>
+                    {{/if}}
+
+                    <label class="cd-field">
+                      <span>Теги</span>
+                      <input type="text" data-track-field="tags" value="{{tagText}}" autocomplete="off" placeholder="lore, npc, music">
+                    </label>
+
+                    <label class="cd-field">
+                      <span>Транскрипт / заметки</span>
+                      <textarea data-track-field="transcript" rows="3">{{transcript}}</textarea>
+                    </label>
+                  </article>
+                {{/each}}
+              </div>
+            {{else}}
+              <p class="cd-empty-note">У кассеты нет дорожек.</p>
+            {{/if}}
+          </section>
+        </form>
+      {{else}}
+        <div class="cd-library__no-selection">
+          <p>Выбери кассету слева или создай новую.</p>
+        </div>
+      {{/if}}
+    </main>
+  {{/unless}}
+</div>

@@ -1,0 +1,135 @@
+.cassette-deck,
+.cassette-deck * {
+  box-sizing: border-box;
+}
+
+.cassette-deck button,
+.cassette-deck input,
+.cassette-deck textarea,
+.cassette-deck select {
+  font-family: var(--cd-font);
+}
+
+.cassette-deck button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.cassette-deck .cd-field {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  color: var(--cd-text);
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.cassette-deck .cd-field > span {
+  color: var(--cd-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.cassette-deck .cd-field > small {
+  color: rgba(170, 159, 139, 0.8);
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+.cassette-deck .cd-field--full {
+  grid-column: 1 / -1;
+}
+
+.cassette-deck .cd-text-button,
+.cassette-deck .cd-icon-button,
+.cassette-deck .cd-mini-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  margin: 0;
+  border: 1px solid var(--cd-border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.055);
+  color: var(--cd-text);
+  font-family: var(--cd-font);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  text-align: center;
+  text-decoration: none;
+  box-shadow: none;
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease, transform 120ms ease, color 120ms ease;
+}
+
+.cassette-deck .cd-text-button {
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 9px;
+}
+
+.cassette-deck .cd-icon-button {
+  width: 30px;
+  min-height: 30px;
+  flex: 0 0 30px;
+  padding: 0;
+}
+
+.cassette-deck .cd-mini-button {
+  min-height: 24px;
+  border-radius: 7px;
+  padding: 0 7px;
+  font-size: 11px;
+}
+
+.cassette-deck .cd-text-button i,
+.cassette-deck .cd-icon-button i,
+.cassette-deck .cd-mini-button i {
+  color: inherit;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.cassette-deck .cd-text-button:hover,
+.cassette-deck .cd-icon-button:hover,
+.cassette-deck .cd-mini-button:hover,
+.cassette-deck .cd-text-button:focus-visible,
+.cassette-deck .cd-icon-button:focus-visible,
+.cassette-deck .cd-mini-button:focus-visible {
+  border-color: var(--cd-border-strong);
+  background: rgba(255, 255, 255, 0.09);
+  color: #fff4d8;
+  outline: none;
+  box-shadow: none;
+}
+
+.cassette-deck .cd-text-button:active,
+.cassette-deck .cd-icon-button:active,
+.cassette-deck .cd-mini-button:active {
+  transform: translateY(1px);
+}
+
+.cassette-deck .cd-text-button--primary {
+  border-color: rgba(217, 164, 65, 0.78);
+  background: rgba(217, 164, 65, 0.18);
+  color: #fff4d8;
+}
+
+.cassette-deck .cd-text-button--danger,
+.cassette-deck .cd-icon-button--danger,
+.cassette-deck .cd-danger-button {
+  border-color: rgba(185, 84, 69, 0.6);
+  background: rgba(185, 84, 69, 0.1);
+  color: #ffd5d0;
+}
+
+.cassette-deck .cd-text-button--warning,
+.cassette-deck .cd-warning-button {
+  border-color: rgba(217, 164, 65, 0.52);
+  background: rgba(217, 164, 65, 0.12);
+  color: #ffe4b5;
+}

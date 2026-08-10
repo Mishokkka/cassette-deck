@@ -1,0 +1,270 @@
+.cd-diagnostics-app,
+.cd-diagnostics-app * {
+  box-sizing: border-box;
+}
+
+.cd-diagnostics-app .window-content {
+  padding: 0;
+  background: var(--cd-bg);
+  color: var(--cd-text);
+  overflow: hidden;
+}
+
+.cd-diagnostics {
+  display: grid;
+  gap: 12px;
+  min-height: 100%;
+  padding: 14px;
+  background: var(--cd-bg);
+  color: var(--cd-text);
+  font-family: var(--cd-font);
+  line-height: 1.25;
+  overflow: auto;
+}
+
+.cd-diagnostics h2,
+.cd-diagnostics h3,
+.cd-diagnostics p,
+.cd-diagnostics dl,
+.cd-diagnostics dt,
+.cd-diagnostics dd,
+.cd-diagnostics ul {
+  margin: 0;
+}
+
+.cd-diagnostics code {
+  color: var(--cd-muted);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.cd-diagnostics__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(220, 190, 120, 0.18);
+}
+
+.cd-diagnostics__header h2 {
+  color: var(--cd-text);
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.cd-diagnostics__header p {
+  margin-top: 4px;
+  color: var(--cd-muted);
+  font-size: 12px;
+}
+
+.cd-diagnostics__actions,
+.cd-diag-tools {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.cd-diag-alert {
+  display: grid;
+  gap: 6px;
+  border: 1px solid rgba(220, 190, 120, 0.22);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.20);
+}
+
+.cd-diag-alert h3 {
+  font-size: 14px;
+}
+
+.cd-diag-alert p,
+.cd-diag-alert li {
+  color: var(--cd-muted);
+  font-size: 12px;
+}
+
+.cd-diag-alert ul {
+  display: grid;
+  gap: 4px;
+  padding-left: 17px;
+}
+
+.cd-diag-alert--ok {
+  border-color: rgba(99, 180, 120, 0.35);
+}
+
+.cd-diag-alert--warn {
+  border-color: rgba(217, 164, 65, 0.42);
+}
+
+.cd-diag-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.cd-diag-card {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+  border: 1px solid rgba(220, 190, 120, 0.16);
+  border-radius: 10px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.cd-diag-card--wide {
+  grid-column: 1 / -1;
+}
+
+.cd-diag-card h3 {
+  color: var(--cd-text);
+  font-size: 14px;
+}
+
+.cd-diag-card dl {
+  display: grid;
+  grid-template-columns: 108px minmax(0, 1fr);
+  gap: 5px 8px;
+}
+
+.cd-diag-card dt {
+  color: var(--cd-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.cd-diag-card dd {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--cd-text);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cd-diag-card dd.is-ok {
+  color: var(--cd-ok);
+}
+
+.cd-diag-card dd.is-bad {
+  color: var(--cd-danger);
+}
+
+.cd-diag-issues {
+  display: grid;
+  gap: 6px;
+}
+
+.cd-diag-issue {
+  display: grid;
+  grid-template-columns: minmax(120px, 180px) minmax(0, 1fr);
+  gap: 6px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 7px;
+  padding: 7px 8px;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.cd-diag-issue strong {
+  color: #ffe4b5;
+  font-size: 12px;
+}
+
+.cd-diag-issue span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--cd-text);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cd-diag-issue code {
+  grid-column: 1 / -1;
+}
+
+.cd-diag-tools {
+  justify-content: flex-start;
+  border-top: 1px solid rgba(220, 190, 120, 0.14);
+  padding-top: 12px;
+}
+
+@media (max-width: 720px) {
+  .cd-diagnostics__header {
+    display: grid;
+  }
+
+  .cd-diagnostics__actions,
+  .cd-diag-tools {
+    justify-content: flex-start;
+  }
+
+  .cd-diag-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cd-diag-muted {
+  margin: -4px 0 10px;
+  color: var(--cd-muted);
+  font-size: 12px;
+}
+
+.cd-qa-list {
+  display: grid;
+  gap: 8px;
+}
+
+.cd-qa-item {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 10px;
+  align-items: start;
+  padding: 8px 10px;
+  border: 1px solid var(--cd-border);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.16);
+}
+
+.cd-qa-status {
+  justify-self: start;
+  min-width: 54px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  text-align: center;
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--cd-text);
+}
+
+.cd-qa-item p {
+  margin: 2px 0 0;
+  color: var(--cd-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.cd-qa-item--pass .cd-qa-status {
+  background: rgba(80, 180, 110, 0.18);
+}
+
+.cd-qa-item--warn .cd-qa-status,
+.cd-qa-item--manual .cd-qa-status {
+  background: rgba(220, 170, 70, 0.18);
+}
+
+.cd-qa-item--fail .cd-qa-status {
+  background: rgba(210, 70, 70, 0.22);
+}
+
+.cd-qa-item--info .cd-qa-status {
+  background: rgba(90, 140, 210, 0.18);
+}

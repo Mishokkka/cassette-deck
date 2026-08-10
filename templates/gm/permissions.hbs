@@ -1,0 +1,73 @@
+<div class="cd-permissions" data-cd-permissions>
+  {{#unless isGM}}
+    <p class="cd-empty-note">Эту панель может открывать только GM.</p>
+  {{else}}
+    <header class="cd-permissions__head">
+      <div>
+        <h2>Права управления</h2>
+        <p>GM всегда имеет полный доступ. Здесь настраиваются игроки и значения по умолчанию.</p>
+      </div>
+      <div class="cd-permissions__actions">
+        <button type="button" class="cd-text-button" data-action="reset-permissions">
+          <i class="fa-solid fa-rotate-left"></i> Сбросить
+        </button>
+        <button type="button" class="cd-text-button cd-text-button--primary" data-action="save-permissions">
+          <i class="fa-solid fa-floppy-disk"></i> Сохранить
+        </button>
+      </div>
+    </header>
+
+    <section class="cd-permissions__note">
+      <i class="fa-solid fa-circle-info"></i>
+      <span>Игроки не отправляют аудиопути напрямую. Они запрашивают действие, GM-клиент проверяет эти права и только потом рассылает команду всем клиентам.</span>
+    </section>
+
+    <section class="cd-permissions__table-wrap">
+      <table class="cd-permissions-table">
+        <thead>
+          <tr>
+            <th class="cd-permissions-table__user">Пользователь</th>
+            {{#each definitions}}
+              <th title="{{hint}}">{{shortLabel}}</th>
+            {{/each}}
+            <th class="cd-permissions-table__presets">Пресеты</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each rows}}
+            <tr data-permission-row data-row-kind="{{kind}}" data-row-id="{{id}}" class="{{#if isDefault}}is-default{{/if}} {{#if active}}is-active{{/if}}">
+              <td class="cd-permissions-table__user">
+                <span class="cd-permissions-table__name">{{label}}</span>
+                <span class="cd-permissions-table__meta">{{sublabel}}</span>
+              </td>
+
+              {{#each values}}
+                <td title="{{hint}}">
+                  <label class="cd-permission-check">
+                    <input type="checkbox" data-permission-key="{{key}}" {{#if checked}}checked{{/if}}>
+                    <span>{{label}}</span>
+                  </label>
+                </td>
+              {{/each}}
+
+              <td class="cd-permissions-table__presets">
+                <div class="cd-permission-presets">
+                  <button type="button" class="cd-mini-button" data-action="apply-controller-preset" title="Дать управление проигрывателем">Контроллер</button>
+                  <button type="button" class="cd-mini-button" data-action="apply-viewer-preset" title="Открывать виджет и просматривать доступные кассеты без изменения общей деки">Наблюдатель</button>
+                  <button type="button" class="cd-mini-button" data-action="apply-locked-preset" title="Запретить всё">Закрыть</button>
+                  {{#unless isDefault}}
+                    <button type="button" class="cd-mini-button" data-action="copy-default-preset" title="Скопировать строку по умолчанию">По ум.</button>
+                  {{/unless}}
+                </div>
+              </td>
+            </tr>
+          {{/each}}
+        </tbody>
+      </table>
+    </section>
+
+    {{#unless hasUsers}}
+      <p class="cd-empty-note">В мире пока нет игроков без GM-прав. Строка по умолчанию все равно будет применена к новым игрокам.</p>
+    {{/unless}}
+  {{/unless}}
+</div>

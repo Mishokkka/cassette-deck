@@ -1,0 +1,174 @@
+<div class="cd-widget cd-widget--v2 {{skinClass}} {{#if debugOverlay}}is-debug{{/if}} {{#if calibrationMode}}is-calibrating{{/if}}" data-cd-widget>
+  <section class="cd-widget__body cd-widget__body--v2">
+    <section class="cd-player-shell" data-cd-drag-handle>
+      <img class="cd-player-shell__body" src="{{playerBodySrc}}" alt="МСЭ Музыка-24">
+
+      {{#if hasCassetteLayer}}
+        <div class="cd-player-shell__cassette-layer" style="{{cassetteLayerStyle}}">
+          <img class="cd-cassette-wheel {{cassetteWheelClass}}" src="{{cassetteWheelSrc}}" alt="" aria-hidden="true" style="{{cassetteWheelLeftStyle}};--cd-wheel-duration:{{cassetteWheelDurationMs}}ms;">
+          <img class="cd-cassette-wheel {{cassetteWheelClass}}" src="{{cassetteWheelSrc}}" alt="" aria-hidden="true" style="{{cassetteWheelRightStyle}};--cd-wheel-duration:{{cassetteWheelDurationMs}}ms;">
+          <img class="cd-player-shell__cassette-base" src="{{cassetteSrc}}" alt="{{cassetteTitle}}">
+        </div>
+        <div class="cd-player-shell__cassette-title" style="{{cassetteTitleStyle}}" data-cd-cassette-title>
+          <span class="cd-cassette-label-text" data-cd-cassette-title-text>{{cassetteLabelText}}</span>
+        </div>
+      {{/if}}
+
+      {{#if lidOpen}}
+        <img class="cd-player-shell__lid cd-player-shell__lid--open" src="{{lidOpenSrc}}" alt="Крышка кассетника открыта" style="{{lidOpenStyle}}">
+      {{else}}
+        <img class="cd-player-shell__lid cd-player-shell__lid--closed" src="{{lidClosedSrc}}" alt="Крышка кассетника закрыта" style="{{lidClosedStyle}}">
+      {{/if}}
+
+      {{#if showLibraryButton}}
+        <div class="cd-player-shell__toolbar cd-player-shell__toolbar--library" data-no-drag>
+          <button
+            type="button"
+            class="cd-overlay-button cd-overlay-button--library {{#if libraryOpen}}is-active{{/if}}"
+            data-action="toggle-widget-library"
+            title="Открыть / закрыть библиотеку кассет"
+            aria-label="Библиотека кассет"
+            aria-expanded="{{#if libraryOpen}}true{{else}}false{{/if}}"
+          >
+            <i class="fa-solid fa-folder-open"></i>
+          </button>
+        </div>
+      {{/if}}
+
+      <div class="cd-player-shell__toolbar cd-player-shell__toolbar--left" data-no-drag>
+        {{#each overlayTools}}
+          <button type="button" class="cd-overlay-button {{#if active}}is-active{{/if}}" data-action="{{action}}" title="{{title}}">
+            <i class="{{icon}}"></i>
+          </button>
+        {{/each}}
+      </div>
+
+      <div class="cd-player-shell__toolbar cd-player-shell__toolbar--right" data-no-drag>
+        <button type="button" class="cd-overlay-button cd-overlay-button--close" data-action="close-widget" title="Закрыть">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      {{#if showLibraryShelf}}
+        <aside class="cd-library-drawer {{#if libraryOpen}}is-open{{/if}}" aria-label="Доступные кассеты" data-no-drag>
+          <div class="cd-library-drawer__header">
+            <strong class="cd-library-drawer__title">Кассеты</strong>
+            <div class="cd-library-drawer__actions">
+              {{#if isGM}}
+                <button type="button" class="cd-mini-button" data-action="open-library" title="Редактор библиотеки">
+                  <i class="fa-solid fa-folder-open"></i>
+                </button>
+              {{/if}}
+              {{#if canEjectCassette}}
+                <button type="button" class="cd-mini-button" data-action="transport-eject" title="Извлечь текущую кассету">
+                  <i class="fa-solid fa-eject"></i>
+                </button>
+              {{/if}}
+              {{#if lidOpen}}
+                <button type="button" class="cd-mini-button cd-lid-close-button" data-action="close-lid" title="Закрыть физическую крышку плеера">
+                  <i class="fa-solid fa-door-closed"></i> Закрыть крышку
+                </button>
+              {{else}}
+                <button type="button" class="cd-mini-button cd-lid-close-button" data-action="open-lid" title="Открыть физическую крышку плеера">
+                  <i class="fa-solid fa-door-open"></i> Открыть крышку
+                </button>
+              {{/if}}
+            </div>
+          </div>
+
+          {{#if hasVisibleCassettes}}
+            <div class="cd-library-drawer__list">
+              {{#each visibleCassettes}}
+                {{#if ../canSelectCassette}}
+                  <button type="button" class="cd-widget-cassette {{#if selected}}is-selected{{/if}}" data-action="select-cassette" data-cassette-id="{{id}}" title="{{title}}">
+                    <span class="cd-widget-cassette__title">{{title}}</span>
+                  </button>
+                {{else}}
+                  <div class="cd-widget-cassette {{#if selected}}is-selected{{/if}}" title="{{title}}">
+                    <span class="cd-widget-cassette__title">{{title}}</span>
+                  </div>
+                {{/if}}
+              {{/each}}
+            </div>
+          {{else}}
+            <p class="cd-empty-note">Нет найденных кассет.</p>
+          {{/if}}
+        </aside>
+      {{/if}}
+
+      {{#if calibrationMode}}
+        <div class="cd-calibration-note">Режим настройки: перетащи зоны кнопок, кассеты, крышки и названия; тяни угол для размера. Сохраняется автоматически.</div>
+        {{#each calibrationZones}}
+          <div class="cd-cal-zone" data-cd-cal-zone="{{id}}" style="{{style}}" title="{{id}}">
+            <span class="cd-debug-label">{{label}}</span>
+            <span class="cd-cal-zone__resize" data-cd-cal-resize></span>
+          </div>
+        {{/each}}
+      {{else}}
+        <div class="cd-player-shell__screen" style="{{screenStyle}}" data-cd-time-screen>
+          <span class="cd-time-slots cd-time-slots--current" data-cd-time-slots="current" aria-label="{{currentTimeLabel}}">
+            {{#each currentTimeSlots}}
+              <span class="cd-time-slot {{#if digit}}is-digit{{/if}} {{#if separator}}is-separator{{/if}} {{#if blank}}is-blank{{/if}}" data-cd-time-char="{{index}}">{{char}}</span>
+            {{/each}}
+          </span>
+          <span class="cd-player-shell__screen-sep" aria-hidden="true">/</span>
+          <span class="cd-time-slots cd-time-slots--duration" data-cd-time-slots="duration" aria-label="{{durationLabel}}">
+            {{#each durationTimeSlots}}
+              <span class="cd-time-slot {{#if digit}}is-digit{{/if}} {{#if separator}}is-separator{{/if}} {{#if blank}}is-blank{{/if}}" data-cd-time-char="{{index}}">{{char}}</span>
+            {{/each}}
+          </span>
+        </div>
+
+
+        {{#if showVolume}}
+          <div
+            class="cd-player-shell__volume {{#unless volumeCanAdjust}}is-readonly{{/unless}}"
+            style="{{volumeTrackStyle}}"
+            data-cd-volume-track
+            data-volume-value="{{volumePercent}}"
+            data-disabled="{{#unless volumeCanAdjust}}true{{else}}false{{/unless}}"
+            role="slider"
+            tabindex="{{#if volumeCanAdjust}}0{{else}}-1{{/if}}"
+            aria-label="Громкость кассетника"
+            aria-orientation="vertical"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-valuenow="{{volumePercent}}"
+          >
+            <span class="cd-player-shell__volume-thumb" data-cd-volume-thumb style="top: {{volumeThumbTop}}%;"></span>
+            {{#if debugOverlay}}<span class="cd-debug-label">VOLUME</span>{{/if}}
+          </div>
+        {{/if}}
+
+        {{#each transportButtons}}
+          <button
+            type="button"
+            class="cd-shell-button {{#if pressed}}is-pressed{{/if}} {{#if disabled}}is-disabled{{/if}} {{#if asset}}has-image{{/if}} {{#if ../debugOverlay}}is-debug{{/if}}"
+            data-action="{{action}}"
+            data-button-id="{{id}}"
+            data-normal-src="{{normalAsset}}"
+            data-pressed-src="{{pressedAsset}}"
+            title="{{title}}"
+            style="{{style}}"
+            {{#if disabled}}disabled aria-disabled="true"{{/if}}
+          >
+            {{#if asset}}
+              <img class="cd-shell-button__image" src="{{asset}}" alt="{{title}}">
+            {{/if}}
+            {{#if ../debugOverlay}}<span class="cd-debug-label">{{label}}</span>{{/if}}
+          </button>
+        {{/each}}
+
+        {{#if showCassetteBayDebug}}
+          <div class="cd-shell-zone" style="{{cassetteBayStyle}}">
+            <span class="cd-debug-label">CASSETTE BAY</span>
+          </div>
+        {{/if}}
+      {{/if}}
+
+      <button type="button" class="cd-widget-resize-handle" data-cd-resize-handle data-no-drag title="Изменить размер">
+        <i class="fa-solid fa-up-right-and-down-left-from-center"></i>
+      </button>
+    </section>
+  </section>
+</div>

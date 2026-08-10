@@ -1,0 +1,9 @@
+{
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check:syntax": "node tools/check-syntax.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "check": "npm run check:syntax && npm test"
+  }
+}

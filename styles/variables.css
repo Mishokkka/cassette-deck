@@ -1,0 +1,15 @@
+.cassette-deck {
+  --cd-bg: rgba(12, 12, 12, 0.94);
+  --cd-panel: rgba(31, 29, 25, 0.96);
+  --cd-panel-soft: rgba(51, 47, 40, 0.86);
+  --cd-border: rgba(220, 190, 120, 0.35);
+  --cd-border-strong: rgba(220, 190, 120, 0.6);
+  --cd-text: #eadfc9;
+  --cd-muted: #aa9f8b;
+  --cd-accent: #d9a441;
+  --cd-danger: #b95445;
+  --cd-ok: #93ba73;
+  --cd-shadow: 0 12px 36px rgba(0, 0, 0, 0.48);
+  --cd-radius: 12px;
+  --cd-font: var(--font-primary, "Signika", sans-serif);
+}
