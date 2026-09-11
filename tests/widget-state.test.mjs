@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { resolveWidgetPositionCandidate } from "../scripts/apps/widget/widget-drag-controller.mjs";
-import { resolveWidgetSizeCandidate } from "../scripts/apps/widget/widget-resize-controller.mjs";
+import { WidgetResizeController, resolveWidgetSizeCandidate } from "../scripts/apps/widget/widget-resize-controller.mjs";
 import {
   effectiveDeckStateFromRuntime,
   formatTime,
@@ -142,14 +142,154 @@ test("physical OPEN button reflects only the lid state", () => {
 });
 
 
-test("widget size candidate prefers saved size over volatile fallback", () => {
+test("widget size candidate keeps an explicit volatile width ahead of persisted state", () => {
   const result = resolveWidgetSizeCandidate({
-    saved: { width: 512 },
-    volatile: { width: 430 }
+    saved: { width: 320 },
+    volatile: { width: 512 }
   });
 
-  assert.deepEqual(result, { width: 512, source: "saved" });
+  assert.deepEqual(result, { width: 512, source: "volatile" });
+  assert.deepEqual(resolveWidgetSizeCandidate({ saved: { width: 476 }, volatile: null }), { width: 476, source: "saved" });
   assert.equal(resolveWidgetSizeCandidate({ saved: null, volatile: null }), null);
+});
+
+test("widget viewport clamping does not overwrite the preferred saved width", () => {
+  const previousWindow = globalThis.window;
+  const css = new Map();
+  const style = {
+    width: "",
+    maxWidth: "",
+    setProperty: (name, value) => css.set(name, value)
+  };
+  globalThis.window = { innerWidth: 336 };
+  try {
+    const controller = new WidgetResizeController({
+      getElement: () => ({ style }),
+      isRendered: () => true,
+      getSavedSize: () => ({ width: 700 })
+    });
+
+    controller.applySavedSize();
+    assert.equal(css.get("--cd-widget-width"), "320px");
+    assert.deepEqual(controller.getPreferredSize(), { width: 700, source: "saved" });
+
+    globalThis.window.innerWidth = 1200;
+    assert.deepEqual(controller.getEffectiveSize(), { width: 700, source: "saved" });
+  } finally {
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
+});
+
+test("widget size controller publishes an authoritative CSS width variable", () => {
+  const previousWindow = globalThis.window;
+  const css = new Map();
+  const style = {
+    width: "",
+    maxWidth: "",
+    setProperty: (name, value) => css.set(name, value)
+  };
+  globalThis.window = { innerWidth: 1200 };
+  try {
+    const controller = new WidgetResizeController({
+      getElement: () => ({ style }),
+      isRendered: () => true,
+      getSavedSize: () => ({ width: 684 })
+    });
+
+    controller.applySavedSize();
+    assert.equal(css.get("--cd-widget-width"), "684px");
+    assert.equal(style.width, "684px");
+  } finally {
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
+});
+
+
+test("widget resize commit keeps the pointer-selected width even if the DOM is reset before pointerup", async () => {
+  const previousWindow = globalThis.window;
+  const previousDocument = globalThis.document;
+
+  const documentHandlers = new Map();
+  const handleHandlers = new Map();
+  const css = new Map();
+  let savedSize = null;
+  let rectPhase = "start";
+
+  const style = {
+    width: "",
+    maxWidth: "",
+    left: "",
+    top: "",
+    right: "",
+    bottom: "",
+    setProperty: (name, value) => css.set(name, value)
+  };
+  const element = {
+    style,
+    classList: { add() {}, remove() {} },
+    querySelector: () => handle,
+    getBoundingClientRect: () => rectPhase === "start"
+      ? { width: 430, height: 266, left: 24, top: 96 }
+      : { width: 320, height: 198, left: 24, top: 96 }
+  };
+  const handle = {
+    addEventListener: (type, fn) => handleHandlers.set(type, fn),
+    removeEventListener() {},
+    setPointerCapture() {},
+    releasePointerCapture() {}
+  };
+
+  globalThis.window = {
+    innerWidth: 1400,
+    innerHeight: 900,
+    requestAnimationFrame: (fn) => { fn(); return 1; },
+    cancelAnimationFrame() {}
+  };
+  globalThis.document = {
+    addEventListener: (type, fn) => documentHandlers.set(type, fn),
+    removeEventListener() {}
+  };
+
+  try {
+    const controller = new WidgetResizeController({
+      getElement: () => element,
+      isRendered: () => true,
+      getSavedSize: () => ({ width: 320 }),
+      saveSize: async (size) => { savedSize = size; },
+      setAppPosition: () => {},
+      savePosition: async () => {}
+    });
+    controller.attach();
+
+    handleHandlers.get("pointerdown")({
+      button: 0,
+      pointerId: 1,
+      clientX: 100,
+      currentTarget: handle,
+      preventDefault() {},
+      stopPropagation() {}
+    });
+
+    documentHandlers.get("pointermove")({
+      pointerId: 1,
+      clientX: 370,
+      preventDefault() {}
+    });
+
+    rectPhase = "reset";
+    await documentHandlers.get("pointerup")({ pointerId: 1 });
+
+    assert.deepEqual(savedSize, { width: 700 });
+    assert.equal(css.get("--cd-widget-width"), "700px");
+    assert.equal(style.width, "700px");
+  } finally {
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+    if (previousDocument === undefined) delete globalThis.document;
+    else globalThis.document = previousDocument;
+  }
 });
 
 

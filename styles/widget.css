@@ -11,8 +11,11 @@
   left: 24px;
   top: 96px;
   z-index: var(--z-index-app, 100);
-  width: min(430px, calc(100vw - 16px));
-  max-width: calc(100vw - 16px);
+  /* Custom resizing owns the width. ApplicationV2 is deliberately kept at
+     width:auto so later renders cannot restore a stale numeric width. */
+  width: var(--cd-widget-width, min(430px, calc(100vw - 16px))) !important;
+  min-width: 0 !important;
+  max-width: calc(100vw - 16px) !important;
   pointer-events: auto;
   user-select: none;
 }
@@ -434,23 +437,21 @@
 }
 
 .cd-library-drawer__header {
-  display: flex;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
   flex: 0 0 auto;
+  width: 100%;
   margin-bottom: 8px;
 }
 
-.cd-library-drawer__title {
-  font-size: 13px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
 .cd-library-drawer__actions {
+  grid-column: 2;
+  justify-self: end;
   display: inline-flex;
+  width: max-content;
   gap: 4px;
+  margin: 0 !important;
 }
 
 .cd-lid-close-button {
