@@ -37,7 +37,7 @@ export class CassetteWidget extends HandlebarsApplicationMixin(ApplicationV2) {
     classes: ["cassette-deck", "cd-widget-app"],
     tag: "aside",
     window: { frame: false },
-    position: { width: 430, height: "auto" }
+    position: { width: "auto", height: "auto" }
   };
 
   static PARTS = { body: { template: TEMPLATES.widget } };
@@ -64,7 +64,6 @@ export class CassetteWidget extends HandlebarsApplicationMixin(ApplicationV2) {
     isRendered: () => this.rendered,
     getSavedSize: () => getWidgetState().lastKnownSize,
     saveSize: (size) => updateWidgetState({ lastKnownSize: size }),
-    setAppSize: (size) => this.#setApplicationSize(size),
     setAppPosition: (position) => this.#setApplicationPosition(position),
     savePosition: (position) => updateWidgetState({ lastKnownPosition: position })
   });
@@ -118,8 +117,20 @@ export class CassetteWidget extends HandlebarsApplicationMixin(ApplicationV2) {
       this.#renderTimer = null;
     }
     this.#dragController.rememberCurrentPosition();
-    this.#resizeController.rememberCurrentSize();
+
+    // This widget has its own resize system. ApplicationV2 must not own its
+    // width: a numeric AppV2 width is re-applied during later positioning
+    // passes and was the source of the repeated snap-back. Keep AppV2 at
+    // width:auto and let the persisted CSS width remain authoritative.
+    if (this.rendered) this.#resizeController.applySavedSize();
     return super.render(options);
+  }
+
+  _updatePosition(position) {
+    return super._updatePosition({
+      ...(position ?? {}),
+      width: "auto"
+    });
   }
 
   requestRender({ delay = 35 } = {}) {
@@ -149,23 +160,6 @@ export class CassetteWidget extends HandlebarsApplicationMixin(ApplicationV2) {
     element.style.right = "auto";
     element.style.bottom = "auto";
   }
-
-  #setApplicationSize(size = {}) {
-    const width = Math.round(Number(size.width));
-    if (!Number.isFinite(width) || width <= 0) return;
-
-    try {
-      this.setPosition?.({ width });
-    } catch (_error) {
-      // Direct style assignment below is enough when ApplicationV2 rejects partial size updates.
-    }
-
-    const element = this.element;
-    if (!element?.style) return;
-    element.style.width = `${width}px`;
-    element.style.maxWidth = "calc(100vw - 16px)";
-  }
-
 
   #isMomentaryPressed(id) {
     const expiresAt = this.#momentaryPressed.get(id);
@@ -231,10 +225,6 @@ export class CassetteWidget extends HandlebarsApplicationMixin(ApplicationV2) {
     await super._onRender(context, options);
     this.#resizeController.applySavedSize();
     this.#dragController.applySavedPosition();
-    window.requestAnimationFrame?.(() => {
-      this.#resizeController.applySavedSize();
-      this.#dragController.applySavedPosition();
-    });
     this.#dragController.attach();
     this.#resizeController.attach();
     this.#calibrationController.attach();

@@ -1,9 +1,9 @@
 export function resolveWidgetSizeCandidate({ saved = null, volatile = null } = {}) {
-  const savedWidth = Number(saved?.width);
-  if (Number.isFinite(savedWidth) && savedWidth > 0) return { width: savedWidth, source: "saved" };
-
   const volatileWidth = Number(volatile?.width);
   if (Number.isFinite(volatileWidth) && volatileWidth > 0) return { width: volatileWidth, source: "volatile" };
+
+  const savedWidth = Number(saved?.width);
+  if (Number.isFinite(savedWidth) && savedWidth > 0) return { width: savedWidth, source: "saved" };
 
   return null;
 }
@@ -13,8 +13,7 @@ export class WidgetResizeController {
   #isRendered;
   #getSavedSize;
   #saveSize;
-  #setAppSize;
-   #setAppPosition;
+  #setAppPosition;
   #savePosition;
   #volatileSize = null;
   #resizeState = null;
@@ -23,22 +22,28 @@ export class WidgetResizeController {
   #moveRaf = null;
   #pendingWidth = null;
 
-  constructor({ getElement, isRendered, getSavedSize, saveSize, setAppSize, setAppPosition, savePosition } = {}) {
+  constructor({ getElement, isRendered, getSavedSize, saveSize, setAppPosition, savePosition } = {}) {
     this.#getElement = getElement;
     this.#isRendered = isRendered;
     this.#getSavedSize = getSavedSize;
     this.#saveSize = saveSize;
-    this.#setAppSize = setAppSize;
     this.#setAppPosition = setAppPosition;
     this.#savePosition = savePosition;
   }
 
-  rememberCurrentSize() {
-    const element = this.#getElement?.();
-    if (!this.#isRendered?.() || !element) return;
-    const rect = element.getBoundingClientRect?.();
-    if (!rect || rect.width <= 0) return;
-    this.#volatileSize = { width: Math.round(rect.width) };
+  getPreferredSize() {
+    const size = resolveWidgetSizeCandidate({
+      saved: this.#getSavedSize?.(),
+      volatile: this.#volatileSize
+    });
+    if (!size) return null;
+    return { width: Math.round(size.width), source: size.source };
+  }
+
+  getEffectiveSize() {
+    const size = this.getPreferredSize();
+    if (!size) return null;
+    return { width: this.#clampWidth(size.width), source: size.source };
   }
 
   attach() {
@@ -65,14 +70,9 @@ export class WidgetResizeController {
   }
 
   applySavedSize() {
-    const size = resolveWidgetSizeCandidate({
-      saved: this.#getSavedSize?.(),
-      volatile: this.#volatileSize
-    });
+    const size = this.getEffectiveSize();
     if (!size) return;
-    const width = this.#clampWidth(size.width);
-    this.#volatileSize = { width };
-    this.#setSize(width);
+    this.#applyWidth(size.width);
   }
 
   #onResizeStart = (event) => {
@@ -80,15 +80,20 @@ export class WidgetResizeController {
     const app = this.#getElement?.();
     if (!app) return;
     const rect = app.getBoundingClientRect();
+    if (!rect || rect.width <= 0) return;
+
+    const startWidth = this.#clampWidth(rect.width);
     this.#resizeState = {
       pointerId: event.pointerId,
       startX: event.clientX,
-      startWidth: rect.width,
+      startWidth,
       startLeft: rect.left,
       startTop: rect.top,
       startHeight: rect.height,
       captureTarget: event.currentTarget
     };
+    this.#volatileSize = { width: startWidth };
+    this.#pendingWidth = startWidth;
     app.classList.add('is-resizing');
     try { event.currentTarget?.setPointerCapture?.(event.pointerId); } catch (_error) {}
     this.#moveHandler = this.#onResizeMove;
@@ -114,6 +119,7 @@ export class WidgetResizeController {
   #onResizeEnd = async (event) => {
     const state = this.#resizeState;
     if (!state || event.pointerId !== state.pointerId) return;
+
     if (this.#moveHandler) document.removeEventListener('pointermove', this.#moveHandler);
     if (this.#endHandler) {
       document.removeEventListener('pointerup', this.#endHandler);
@@ -122,21 +128,25 @@ export class WidgetResizeController {
     try { state.captureTarget?.releasePointerCapture?.(state.pointerId); } catch (_error) {}
     this.#moveHandler = null;
     this.#endHandler = null;
+
     const element = this.#getElement?.();
     element?.classList?.remove('is-resizing');
     if (this.#moveRaf !== null && typeof window.cancelAnimationFrame === "function") window.cancelAnimationFrame(this.#moveRaf);
     this.#moveRaf = null;
-    if (Number.isFinite(Number(this.#pendingWidth))) this.#setSize(this.#pendingWidth, { syncApp: false });
-    this.#pendingWidth = null;
-    const rect = element?.getBoundingClientRect?.();
-    this.#resizeState = null;
-    if (!rect) return;
 
-    const width = this.#clampWidth(rect.width);
+    // Do not read the final width back from the DOM here. A render or AppV2
+    // positioning pass can happen between the last pointermove and pointerup.
+    // The last explicit pointer-derived width is the user's actual choice.
+    const requestedWidth = Number(this.#pendingWidth ?? this.#volatileSize?.width ?? state.startWidth);
+    const width = this.#clampWidth(requestedWidth);
+    this.#pendingWidth = null;
+    this.#resizeState = null;
     this.#volatileSize = { width };
-    this.#setSize(width, { syncApp: true });
+    this.#applyWidth(width);
     await this.#saveSize?.({ width });
 
+    const rect = element?.getBoundingClientRect?.();
+    if (!rect) return;
     const position = this.#clampPositionAfterResize(rect.left, rect.top, width, rect.height);
     this.#setPosition(position.left, position.top);
     await this.#savePosition?.({ left: position.left, top: position.top });
@@ -147,21 +157,22 @@ export class WidgetResizeController {
     const run = () => {
       this.#moveRaf = null;
       const width = this.#pendingWidth;
-      this.#pendingWidth = null;
-      if (Number.isFinite(Number(width))) this.#setSize(width, { syncApp: false });
+      if (Number.isFinite(Number(width))) this.#applyWidth(width);
     };
     if (typeof window.requestAnimationFrame === "function") this.#moveRaf = window.requestAnimationFrame(run);
     else run();
   }
 
-  #setSize(width, { syncApp = true } = {}) {
+  #applyWidth(width) {
     const roundedWidth = Math.round(width);
     const element = this.#getElement?.();
-    if (element) {
-      element.style.width = `${roundedWidth}px`;
-      element.style.maxWidth = 'calc(100vw - 16px)';
-    }
-    if (syncApp) this.#setAppSize?.({ width: roundedWidth });
+    if (!element?.style) return;
+
+    // Width is deliberately CSS-owned. ApplicationV2 remains width:auto and
+    // therefore cannot restore an old numeric width on a later re-render.
+    element.style.setProperty?.('--cd-widget-width', `${roundedWidth}px`);
+    element.style.width = `${roundedWidth}px`;
+    element.style.maxWidth = 'calc(100vw - 16px)';
   }
 
   #setPosition(left, top) {

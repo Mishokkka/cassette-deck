@@ -418,6 +418,7 @@
   justify-content: flex-end;
   gap: 5px;
   max-width: 138px;
+  margin-left: auto;
 }
 
 .cd-track-row__actions {

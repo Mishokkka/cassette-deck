@@ -15,6 +15,11 @@ function cloneDefault(value) {
   return foundry.utils.deepClone(value);
 }
 
+// Client widget-state fields are updated by independent UI actions (resize,
+// drag, drawer toggles, diagnostics). Serialize read-modify-write operations so
+// concurrent patches cannot restore an older size or position.
+let widgetStateUpdateQueue = Promise.resolve();
+
 export function registerSettings() {
   game.settings.register(MODULE_ID, SETTINGS.debug, {
     name: "Cassette Deck: Debug logging",
@@ -307,10 +312,16 @@ export function getWidgetState() {
   return state;
 }
 
-export async function updateWidgetState(patch = {}) {
-  const next = foundry.utils.mergeObject(getWidgetState(), patch, { inplace: false });
-  await setSetting(SETTINGS.widgetState, next);
-  return next;
+export function updateWidgetState(patch = {}) {
+  const applyPatch = async () => {
+    const next = foundry.utils.mergeObject(getWidgetState(), patch, { inplace: false });
+    await setSetting(SETTINGS.widgetState, next);
+    return next;
+  };
+
+  const result = widgetStateUpdateQueue.then(applyPatch, applyPatch);
+  widgetStateUpdateQueue = result.then(() => undefined, () => undefined);
+  return result;
 }
 
 export function getDeckState() {
